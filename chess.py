@@ -36,7 +36,13 @@ class Chess:
                 return move[:2], move[-2:]
 
     def check_game_rules(self, move):
-        if move is None:  # Empty square
+
+        cur_loc = move[:2]
+        tar_loc = move[-2:]
+
+        cur_piece = self.get_board_piece(cur_loc)
+
+        if cur_piece is None:  # Empty square
             return False
 
         cols = "abcedefgh"
@@ -44,9 +50,6 @@ class Chess:
 
         if len(move) != 5:
             return False
-
-        cur_loc = move[:2]
-        tar_loc = move[-2:]
 
         # check column
         if cur_loc[0] not in cols or tar_loc[0] not in cols:
@@ -60,7 +63,7 @@ class Chess:
             print(error_mess)
             return False
 
-        cur_piece = self.get_board_piece(cur_loc)
+
 
         if cur_piece.get_player() != self._player_turn:  # Not player turn
             error_mess = "Not player turn"
@@ -78,7 +81,7 @@ class Chess:
         return True
 
     def get_board_piece(self, location):
-        return self._board.get_board_square(location)
+        return self._board.get_board_loc(location)
 
     def make_move(self, start_loc, end_loc):
         self._board.move_piece(start_loc, end_loc)

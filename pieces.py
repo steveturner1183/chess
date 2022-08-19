@@ -8,13 +8,13 @@ class PieceSet:
             q_loc = "e1", "e8"
 
         self._p1_roster = [Rook("a1"), Knight("b1"), Bishop("c1"),
-                           Queen(q_loc), King(k_loc), Bishop("f1"),
+                           Queen(q_loc[0]), King(k_loc[0]), Bishop("f1"),
                            Knight("g1"), Rook("h1"), Pawn("a2"),
                            Pawn("b2"), Pawn("c2"), Pawn("d2"), Pawn("e2"),
                            Pawn("f2"), Pawn("g2"), Pawn("h2")]
 
         self._p2_roster = [Rook("a8"), Knight("b8"), Bishop("c8"),
-                           Queen(q_loc), King(k_loc), Bishop("f8"),
+                           Queen(q_loc[1]), King(k_loc[1]), Bishop("f8"),
                            Knight("g8"), Rook("h8"), Pawn("a7"),
                            Pawn("b7"), Pawn("c7"), Pawn("d7"), Pawn("e7"),
                            Pawn("f7"), Pawn("g7"), Pawn("h7")]
@@ -27,6 +27,12 @@ class PieceSet:
 
     def get_piece_sets(self):
         return self._p1_roster, self._p2_roster
+
+    def get_king(self, player):
+        if player == 1:
+            return self._p1_roster[4]
+        else:
+            return self._p2_roster[4]
 
 
 class GamePiece:

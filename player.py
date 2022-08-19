@@ -21,6 +21,9 @@ class Player:
     def get_king(self):
         return self._king
 
+    def set_king(self, king):
+        self._king = king
+
     def get_roster(self):
         return self._roster
 
