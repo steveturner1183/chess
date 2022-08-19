@@ -1,7 +1,38 @@
+class PieceSet:
+    def __init__(self, p1_color):
+        if p1_color == "W":
+            k_loc = "e1", "e8"
+            q_loc = "d1", "d8"
+        else:
+            k_loc = "d1", "d8"
+            q_loc = "e1", "e8"
+
+        self._p1_roster = [Rook("a1"), Knight("b1"), Bishop("c1"),
+                           Queen(q_loc), King(k_loc), Bishop("f1"),
+                           Knight("g1"), Rook("h1"), Pawn("a2"),
+                           Pawn("b2"), Pawn("c2"), Pawn("d2"), Pawn("e2"),
+                           Pawn("f2"), Pawn("g2"), Pawn("h2")]
+
+        self._p2_roster = [Rook("a8"), Knight("b8"), Bishop("c8"),
+                           Queen(q_loc), King(k_loc), Bishop("f8"),
+                           Knight("g8"), Rook("h8"), Pawn("a7"),
+                           Pawn("b7"), Pawn("c7"), Pawn("d7"), Pawn("e7"),
+                           Pawn("f7"), Pawn("g7"), Pawn("h7")]
+
+        for piece in self._p1_roster:
+            piece.set_player(1)
+
+        for piece in self._p2_roster:
+            piece.set_player(2)
+
+    def get_piece_sets(self):
+        return self._p1_roster, self._p2_roster
+
+
 class GamePiece:
-    def __init__(self):
+    def __init__(self, location):
         self._player = None
-        self._cur_loc = None
+        self._cur_loc = location
         self._name = None
         self._rows = "12345678"
         self._cols = "abcdefgh"
@@ -26,6 +57,9 @@ class GamePiece:
 
     def set_location(self, location):
         self._cur_loc = location
+
+    def get_location(self):
+        return self._cur_loc
 
     def get_name(self):
         return self._name
@@ -83,30 +117,30 @@ class GamePiece:
 
 
 class Queen(GamePiece):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, location):
+        super().__init__(location)
         self._name = "Queen"
         self._move_set = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 
 
 class King(GamePiece):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, location):
+        super().__init__(location)
         self._name = "King"
         self._move_set = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
         self._max_move = 1
 
 
 class Pawn(GamePiece):  ### Need attack move and en passant  ## need transformation
-    def __init__(self):
-        super().__init__()
+    def __init__(self, location):
+        super().__init__(location)
         self._name = "Pawn"
         self._max_move = 2
 
     def set_player(self, player):
         self._player = player
 
-        if self._player == "player_1":
+        if self._player == 1:
             self._move_set = ["N"]
         else:
             self._move_set = ["S"]
@@ -116,8 +150,8 @@ class Pawn(GamePiece):  ### Need attack move and en passant  ## need transformat
 
 
 class Knight(GamePiece):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, location):
+        super().__init__(location)
         self._directions = {"NE": (1, 2), "EN": (2, 1), "ES": (2, -1),
                             "SE": (1, -2), "SW": (-1, -2), "WS": (-2, -1),
                             "WN": (-2, 1), "NW": (-1, 2)}
@@ -127,14 +161,14 @@ class Knight(GamePiece):
 
 
 class Rook(GamePiece):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, location):
+        super().__init__(location)
         self._name = "Rook"
         self._move_set = ["N", "E", "S", "W"]
 
 
 class Bishop(GamePiece):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, location):
+        super().__init__(location)
         self._name = "Bishop"
         self._move_set = ["NE", "SE", "SW", "NW"]
