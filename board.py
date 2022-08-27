@@ -1,30 +1,56 @@
 from pieces import *
 from player import Player
+import logging
+logging.basicConfig(level=logging.DEBUG)
+from typing import Union
 
 
 class GameBoard:
     def __init__(self, player_1, player_2):
+        self._cols = "abcdefgh"
+        self._rows = "12345678"
         self._p1 = player_1
         self._p2 = player_2
+
         self._game_board = []
         self.set_up_board()
-        self._col_to_int = {"a": 0, "b": 1, "c": 2, "d": 3, "e": 4, "f": 5,
-                      "g": 6, "h": 7}
-        self._row_to_int = {"8": 0, "7": 1, "6": 2, "5": 3, "4": 4, "3": 5,
-                      "2": 6, "1": 7}
-
 
         self.set_all_poss_moves()
+        self._en_passant = False
 
-    def get_board_loc(self, location):
-        col = self._col_to_int[location[0]]
-        row = self._row_to_int[location[1]]
+    def get_board_col_row(self, loc: str) -> (int, int):
+        """
+        Returns board grid coordinates for given location
+        :param loc: Chess coordinate location, example "a1"
+        :return: Grid coordinates for given location
+        """
+        col, row = loc[0], loc[1]
+        return self._cols.index(col), self._rows.index(row)
 
-        board_loc = self._game_board[row][col]
+    def get_board_loc(self, loc: str):
+        """
+        Retrieves value at given board location
+        :param loc: Chess coordinate location, example "a1"
+        :return: Piece if piece at given location, otherwise None
+        """
+        col, row = self.get_board_col_row(loc)
+        return self._game_board[row][col]
 
-        return board_loc
+    def set_board_loc(self, loc, value):
+        """
+        Sets the given board location to a new value
+        :param loc: Chess coordinate location, example "a1"
+        :param value: Piece or None if space is to be cleared
+        :return: None
+        """
+        col, row = self.get_board_col_row(loc)
+        self._game_board[row][col] = value
 
     def set_up_board(self):
+        """
+        Initialize the board set
+        :return: None
+        """
         # generate set of pieces based on player 1 color
         piece_set = PieceSet(self._p1.get_color())
         rosters = piece_set.get_piece_sets()
@@ -38,120 +64,189 @@ class GameBoard:
         self._p2.set_king(piece_set.get_king(1))
 
         self._game_board = [
-            [piece for piece in self._p2.get_roster()[:8]],
-            [piece for piece in self._p2.get_roster()[8:]],
-            [None] * 8, [None] * 8, [None] * 8, [None] * 8,
+            [piece for piece in self._p1.get_roster()[:8]],
             [piece for piece in self._p1.get_roster()[8:]],
-            [piece for piece in self._p1.get_roster()[:8]]
+            [None] * 8, [None] * 8, [None] * 8, [None] * 8,
+            [piece for piece in self._p2.get_roster()[8:]],
+            [piece for piece in self._p2.get_roster()[:8]]
         ]
 
     def set_all_poss_moves(self):
+        """
+        Log of all possible moves a player can make is required to verify if a
+        layer is in checkmate. This functions sets all the possile moves both
+        players can make and stores in class attribute
+        :return:
+        """
+        logging.disable(logging.DEBUG)
 
-        for player in (self._p1, self._p2):
+        for player in self._p1, self._p2:
             possible_moves = []
+            roster = player.get_roster()
 
-            for piece in player.get_roster():
-                piece_moves = piece.get_possible_moves()
+            for piece in roster:
+                if piece.get_name() == "Pawn":
+                    # NEED TO ACCOUNT FOR MOVE AND CAPTURE !!!!!!!!!!!!!!!!!!!!
+                    all_moves = piece.get_possible_moves()
+                    moves = all_moves["MOVE"]
+                    captures = all_moves["CAPTURE"]
+                    piece_moves = dict(**moves, **captures)
+                    if len(all_moves["EN_PASSANT"]) > 0:
+                        cur_loc = piece.get_location()
+                        target = all_moves["EN_PASSANT"][1]
+                        valid_move_check = self.validate_move(cur_loc, target)
+                        if valid_move_check:
+                            possible_moves.append([target, piece])
+                else:
+                    piece_moves = piece.get_possible_moves()
+
+                cur_loc = piece.get_location()
 
                 for target in piece_moves:
-                    if self.validate_move(piece.get_location(), target) is True:
+                    valid_move_check = self.validate_move(cur_loc, target)
+
+                    if valid_move_check is True:
                         possible_moves.append([target, piece])
 
             player.set_pos_moves(possible_moves)
+        logging.disable(logging.NOTSET)
+
+    def verify_path_is_clear(self, target_path):
+        """
+        :param target_path: Path to location piece is trying to move
+        :return: True if path is clear, false if blocked
+        """
+        for step in target_path[:-1]:
+            if self.get_board_loc(step) is not None:
+                return False
+        return True
 
     def validate_move(self, current_loc, target_loc):
         cur_piece = self.get_board_loc(current_loc)
-        all_moves_list = cur_piece.get_possible_moves()
+        target_piece = self.get_board_loc(target_loc)
+        move_list = cur_piece.get_possible_moves()
+        move_type = "MOVE" if target_piece is None else "CAPTURE"
 
-        # Check if target move is in piece's possible moves
-        if target_loc not in all_moves_list:
+        if cur_piece.get_name() == "Pawn":
+            if len(move_list["EN_PASSANT"]) > 0:
+                if target_loc == move_list["EN_PASSANT"][1]:
+                    if target_piece is not None:
+                        return False
+                    else:
+                        self._en_passant = True
+                        return True
+            else:
+                move_list = move_list[move_type]
+
+        # Move location is not in piece's move set
+        if target_loc not in move_list:
+            logging.debug("Not in moves")
             return False
 
         # Check if path is blocked
-        target_path = all_moves_list[target_loc]
-
-        for step in target_path[:-1]:
-            if self.get_board_loc(step) is None:
-                return False
-
-        # Check that target space is empty or oppenents pieces
-        if self.get_board_loc(target_loc) is not None:
-
-            target_piece = self.get_board_loc(target_loc)
-            if cur_piece.get_player() == target_piece.get_player():
-                return False
-
-        return True
-
-    def king_check(self, player):
-        king = player.get_king()
-        king_loc = king.get_location()
-
-        if player == self._p1:
-            moves = self._p2.get_pos_moves()
-        else:
-            moves = self._p1.get_pos_moves()
-
-        for move in moves:
-            if move[0] == king_loc:
-                if self.king_check_mate(player, move, king, moves) is True:
-                    return "CHECKMATE"
-                else:
-                    return "CHECK"
-
-        return False
-
-    def king_check_mate(self, player, move, king, moves):
-        attack_piece = move[1]
-        target = move[0]
-        move_path = attack_piece.get_possible_moves()[target]
-        player_moves = player.get_pos_moves()
-
-        # See if move can be blocked
-        for space in move_path[:-1]:
-            if space in player_moves:
-                return False
-
-        # See if piece can be captured
-        if attack_piece.get_current_location() in player_moves:
+        if not self.verify_path_is_clear(target_path=move_list[target_loc]):
+            logging.debug("Path blocked")
             return False
 
-        # See if king can move out of check
-        all_king_moves = king.get_possible_moves()
-        valid_king_moves = []
-        for x in all_king_moves:
-            if self.validate_move(x) is True:
-                valid_king_moves.append(x)
-        for move in valid_king_moves:
-            if move not in moves:
+        if move_type == "CAPTURE":
+            # Check that target space is empty or oppenents pieces
+            if cur_piece.get_player() == target_piece.get_player():
+                logging.debug("curPlayer={} == tarPlayer={}".format(
+                    cur_piece.get_player(), target_piece.get_player())
+                    )
                 return False
 
         return True
 
-    def special_moves(self):
+    def board_state_moves(self):
         pass
-        # pawn attack
-        # en passant
         # rook / castle
         # transformation
-        # pawn first move
 
     def move_piece(self, cur_loc, tar_loc):
-        c_col, c_row = self._col_to_int[cur_loc[0]], self._row_to_int[cur_loc[1]]
-        t_col, t_row = self._col_to_int[tar_loc[0]], self._row_to_int[tar_loc[1]]
+        """
+        Change the board to match a verified move
+        :param cur_loc: Location of piece to be moved on board
+        :param tar_loc: Location of square piece is moving to
+        :return: None
+        """
+        # Move pieces on board
+        cur_piece = self.get_board_loc(cur_loc)
+        tar_piece = self.get_board_loc(tar_loc)
 
-        self._game_board[t_row][t_col] = self._game_board[c_row][c_col]
-        self._game_board[t_row][t_col].set_location(tar_loc)
-        self._game_board[c_row][c_col] = None
+        # Special moving sequence for en passant
+        if self._en_passant is True:
+            cap_loc = self.get_board_loc(cur_loc).get_en_passant_capture()
+            cap_col, cap_row = self.get_board_col_row(cap_loc)
+            tar_piece = self.get_board_loc(cap_loc)
+
+            self.set_board_loc(cap_loc, None)
+            self._en_passant = False
+
+        # Remove captured piece from opposing players roster
+        if tar_piece is not None:
+            if cur_piece.get_player() == 1:
+                self._p2.remove_piece(tar_piece)
+            else:
+                self._p1.remove_piece(tar_piece)
+
+        # Move piece to new location
+        cur_piece.set_location(tar_loc)
+        self.set_board_loc(tar_loc, cur_piece)
+        self.set_board_loc(cur_loc, None)
+
+        if cur_piece is not None and cur_piece.get_name() == "Pawn":
+            # Chess rule - Pawn can only move two spaces on first move
+            cur_piece.made_first_move()
+
+            # Chess rule - If piece moved 2 spaces, other pawns can en passant
+            self.check_en_passant(cur_piece, cur_loc, tar_loc)
 
         # reset board after moved piece
         self.set_all_poss_moves()
+
+    def check_en_passant(self, pawn, start_loc , end_loc):
+        """
+        Checks if given pawn can be captured from en passant, and sets the
+        capturing pieces available moves to include en passant if true
+        :param pawn:
+        :return:
+        """
+        for row in self._game_board:
+            for piece in row:
+                if piece is not None and piece.get_name() == "Pawn":
+                    piece.clear_en_passant()
+
+        # Only Pawn that moves 2 spaces is eligable
+        if abs(self._rows.index(start_loc[1]) - self._rows.index(end_loc[1])) != 2:
+            return
+
+        cur_loc = pawn.get_location()
+        cur_col, cur_row = self.get_board_col_row(cur_loc)
+
+        # Check east and west neighbor to see if they can perform en passant next turn
+        for direction in 1, -1:
+            neighbor_col = cur_col + direction
+            board_boundary = range(8)
+
+            if neighbor_col in board_boundary:
+                neighbor = self.get_board_loc(self._cols[neighbor_col] + cur_loc[1])
+
+                if neighbor is not None and neighbor.get_name() == "Pawn":
+                    if neighbor.get_player() == 1:  # Move north of target pawn
+                        en_move = cur_loc[0] + self._rows[cur_row + 1]
+                    else:  # Move south
+                        en_move = cur_loc[0] + self._rows[cur_row - 1]
+
+                    neighbor.set_en_passant(cur_loc, en_move)
+
 
     def print_board(self):
         print("      a     b     c      d     e     f     g      h ")
         print("   -----------------------------------------------")
         count = 8
-        for rows in self._game_board:
+        print_board = [self._game_board[row] for row in range(7, -1, -1)]
+        for rows in print_board:
             print(count, end=" | ")
             count -= 1
             for piece in rows:

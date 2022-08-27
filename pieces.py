@@ -1,5 +1,13 @@
 class PieceSet:
     def __init__(self, p1_color):
+        """
+        Creates a roster for player 1 and 2 to use at the beginning of the game
+
+        :param p1_color: White or black piece color chosen. Determines positions
+        of King and Queen
+        """
+
+        # Chess rule - Queen will always go on their own color
         if p1_color == "W":
             k_loc = "e1", "e8"
             q_loc = "d1", "d8"
@@ -38,22 +46,21 @@ class PieceSet:
 class GamePiece:
     def __init__(self, location):
         self._player = None
-        self._cur_loc = location
         self._name = None
+        self._cur_loc = location
         self._rows = "12345678"
         self._cols = "abcdefgh"
-        self._col_to_int = {"a": 0, "b": 1, "c": 2, "d": 3, "e": 4, "f": 5,
-                            "g": 6, "h": 7}
-        self._row_to_int = {"1": 0, "2": 1, "3": 2, "4": 3, "5": 4, "6": 5,
-                            "7": 6, "8": 7}
+
         self._directions = {"N": (0, 1), "NE": (1, 1), "E": (1, 0),
                             "SE": (1, -1), "S": (0, -1), "SW": (-1, -1),
                             "W": (-1, 0), "NW": (-1, 1)}
-        self._boundary = range(0, 8)
+
         self._move_set = []
         self._max_move = 7
-
         self._possible_moves = dict()
+
+    def __repr__(self):
+        return repr("P" + str(self._player) + "-" + self._name + "-" + self._cur_loc )
 
     def set_player(self, player):
         self._player = player
@@ -70,53 +77,74 @@ class GamePiece:
     def get_name(self):
         return self._name
 
-    def format_cell(self, col, row):
+    def format_grid_loc(self, col, row):
         return self._cols[col] + self._rows[row]
 
-    def get_col_row(self, location):
+    def get_grid_col_row(self, location): ########################### CHANGE THESE TO BOARD
         col = location[0]
         row = location[1]
-        return (self._col_to_int[col], self._row_to_int[row])
+        return self._cols.index(col), self._rows.index(row)
 
-    def get_possible_moves(self):
+    def add_move(self, move):
+        self._possible_moves.update(move)
+
+    def get_possible_moves(self) -> dict:
         self._possible_moves.clear()
 
         for directional_move in self._move_set:
-            self.add_direction_move_set(directional_move)
+            dir_move_set = self.add_direction_move_set(directional_move)
+            self._possible_moves.update(dir_move_set)
 
         return self._possible_moves
 
     def add_direction_move_set(self, direction):
-        move_step = self._directions[direction]
-        cur_loc = self.get_col_row(self._cur_loc)
+        """
 
-        col = cur_loc[0] + move_step[0]
+        :param direction: N, NE, E, etc; piece movement direction to find moves
+        :return: All possible moves a piece can make in a given direction
+        """
+        # Get coordinates required to move piece in given direction
+        move_step = self._directions[direction]
+
+        cur_loc = self.get_grid_col_row(self._cur_loc)  # str coordinate to int
+        col = cur_loc[0] + move_step[0]  # starting loc
         row = cur_loc[1] + move_step[1]
 
         possible_moves = []
-
         spaces_moved = 0
-        while col in self._boundary and row in self._boundary and spaces_moved < self._max_move:
-            target = self.format_cell(col, row)
 
+        # Find all potential moves from current position
+        while col in range(8) and row in range(8) and spaces_moved < self._max_move:
+            # Current piece can move to target space
+            target = self.format_grid_loc(col, row)
             possible_moves.append(target)
+
             spaces_moved += 1
             col += move_step[0]
             row += move_step[1]
 
+        # Find the path to each potential move from current piece location
+        all_move_sets = dict()
         for targets in possible_moves:
-            self._possible_moves[targets] = self.find_path(targets, move_step)
+            all_move_sets[targets] = self.find_path(targets, move_step)
+
+        return all_move_sets
 
     def find_path(self, target, move_step):
+        """
+
+        :param target: location piece is trying to move
+        :param move_step: step increments to get to target
+        :return: path required to reach target
+        """
         move_path = []
-        cur_loc = self.get_col_row(self._cur_loc)
-        col = cur_loc[0]
-        row = cur_loc[1]
+        cur_loc = self.get_grid_col_row(self._cur_loc)
+        col, row = cur_loc[0], cur_loc[1]
 
         while cur_loc != target:
             col += move_step[0]
             row += move_step[1]
-            cur_loc = self.format_cell(col, row)
+            cur_loc = self.format_grid_loc(col, row)
             move_path.append(cur_loc)
 
         return move_path
@@ -137,22 +165,70 @@ class King(GamePiece):
         self._max_move = 1
 
 
-class Pawn(GamePiece):  ### Need attack move and en passant  ## need transformation
+class Pawn(GamePiece):  ### Need capture move and en passant  ## need transformation
     def __init__(self, location):
         super().__init__(location)
         self._name = "Pawn"
+        self._first_move_made = False
         self._max_move = 2
+        self._possible_moves = {
+            "MOVE": dict(),
+            "CAPTURE": dict(),
+            "EN_PASSANT": []
+        }
+        self._capture_set = []
+        self._move_set = []
+        self._en_passant = False
+        self._en_passant_locs = []
+
+    def set_en_passant(self, capture_loc, move_loc):
+        self._en_passant = True
+        self._en_passant_locs.append(capture_loc)
+        self._en_passant_locs.append(move_loc)
+
+    def clear_en_passant(self):
+        self._en_passant = False
+        self._en_passant_locs.clear()
+        self._possible_moves["EN_PASSANT"].clear()
+
+    def get_en_passant_capture(self):
+        return self._en_passant_locs[0]
 
     def set_player(self, player):
         self._player = player
 
         if self._player == 1:
             self._move_set = ["N"]
+            self._capture_set = ["NW", "NE"]
         else:
             self._move_set = ["S"]
+            self._capture_set = ["SW", "SE"]
 
-    def set_max_move(self):  ### NEED TO CHANGE IN BOARD ###
+    def made_first_move(self):  ### NEED TO CHANGE IN BOARD ###
         self._max_move = 1
+        self._first_move_made = True
+
+    def get_possible_moves(self):
+        self._possible_moves["MOVE"].clear()
+        self._possible_moves["CAPTURE"].clear()
+
+        for directional_move in self._move_set:
+            dir_move_set = self.add_direction_move_set(directional_move)
+            self._possible_moves["MOVE"].update(dir_move_set)
+
+        temp_move = self._max_move
+        self._max_move = 1
+
+        for directional_capture in self._capture_set:
+            dir_capture_set = self.add_direction_move_set(directional_capture)
+            self._possible_moves["CAPTURE"].update(dir_capture_set)
+
+        self._max_move = temp_move
+
+        if self._en_passant is True:
+            self._possible_moves["EN_PASSANT"] = self._en_passant_locs
+
+        return self._possible_moves
 
 
 class Knight(GamePiece):

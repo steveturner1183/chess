@@ -12,6 +12,9 @@ class Player:
         self._possible_moves = []
         self._roster = []
 
+    def remove_piece(self, piece):
+        self._roster.remove(piece)
+
     def get_turn(self):
         return self._player_turn
 
