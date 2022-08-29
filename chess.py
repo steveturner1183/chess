@@ -13,15 +13,29 @@ class Chess:
         self._board = GameBoard(self._p1, self._p2)
         self._player_turn = 1
 
+    def get_board_state(self):
+        board_state = dict()
+        for col in range(8):
+            for row in range(8):
+                loc = self._board.get_location_format(col, row)
+                piece = self._board.get_board_loc(loc)
+                board_state[loc] = piece
+        return  board_state
+
     def check_game_status(self):
         pass
+
+    def get_player(self, player):
+        if player == 1:
+            return self._p1
+        else:
+            return self._p2
+
 
     def start_game(self):
         while self._game_status == "INCOMPLETE":
             move = self.get_move()  # Should always return valid move
-
             self.make_move(move[0], move[1])
-
             self.set_player_turn()
             self.check_game_status()
             # self._game_status = "stop"

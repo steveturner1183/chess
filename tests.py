@@ -162,5 +162,29 @@ class TestPieces(unittest.TestCase):
         move = "d1 d2"
         self.assertFalse(game.check_game_rules(move))
 
+    def test_king_check(self):
+        logging.debug("----test_king_check----")
+        game = Chess()
+        moves = ["e2 e3", "d7 d6", "f1 b5"]
+
+        for move in moves:
+            self.assertTrue(game.check_game_rules(move))
+            game.make_move(move[:2], move[-2:])
+            game.set_player_turn()
+
+        self.assertTrue(game._board._p2._in_check)
+
+
+    def test_king_checkmate(self):
+        logging.debug("----test_king_checkmate----")
+        game = Chess()
+        moves = ["e2 e4", "f7 f6", "d1 e2", "g7 g5", "e2 h5"]
+
+        for move in moves:
+            logging.debug("Testing {}".format(move))
+            self.assertTrue(game.check_game_rules(move))
+            game.make_move(move[:2], move[-2:])
+            game.set_player_turn()
+
 if __name__ == '__main__':
     unittest.main()

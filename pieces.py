@@ -1,3 +1,5 @@
+
+
 class PieceSet:
     def __init__(self, p1_color):
         """
@@ -9,9 +11,11 @@ class PieceSet:
 
         # Chess rule - Queen will always go on their own color
         if p1_color == "W":
+            p2_color = "B"
             k_loc = "e1", "e8"
             q_loc = "d1", "d8"
         else:
+            p2_color = "W"
             k_loc = "d1", "d8"
             q_loc = "e1", "e8"
 
@@ -29,9 +33,11 @@ class PieceSet:
 
         for piece in self._p1_roster:
             piece.set_player(1)
+            piece.set_image_path(p1_color)
 
         for piece in self._p2_roster:
             piece.set_player(2)
+            piece.set_image_path(p2_color)
 
     def get_piece_sets(self):
         return self._p1_roster, self._p2_roster
@@ -45,6 +51,8 @@ class PieceSet:
 
 class GamePiece:
     def __init__(self, location):
+        self._button = None
+        self._image_path = None
         self._player = None
         self._name = None
         self._cur_loc = location
@@ -60,7 +68,20 @@ class GamePiece:
         self._possible_moves = dict()
 
     def __repr__(self):
-        return repr("P" + str(self._player) + "-" + self._name + "-" + self._cur_loc )
+        return repr("P" + str(self._player) + "-" + self._name + "-" + self._cur_loc)
+
+    def set_button(self, button):
+        self._button = button
+
+    def get_button(self):
+        return self._button
+
+    def set_image_path(self, color):
+        path = color + "_" + self._name + ".PNG"
+        self._image_path = path
+
+    def get_image_path(self):
+        return self._image_path
 
     def set_player(self, player):
         self._player = player
