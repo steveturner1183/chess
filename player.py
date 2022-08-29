@@ -5,12 +5,18 @@ class Player:
     def __init__(self, player_turn, player_color):
         self._player_turn = player_turn
         self._color = player_color
-        self._set = PieceSet(player_turn)
+        #self._set = PieceSet(player_turn)
         self._roster = None
         self._king = None
         self._in_check = False
         self._possible_moves = []
         self._roster = []
+
+    def set_in_check(self, value):
+        self._in_check = value
+
+    def get_in_check(self):
+        return self._in_check
 
     def remove_piece(self, piece):
         self._roster.remove(piece)
