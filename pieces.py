@@ -1,4 +1,4 @@
-
+from copy import deepcopy
 
 class PieceSet:
     def __init__(self, p1_color):
@@ -56,7 +56,8 @@ class GamePiece:
         self._player = None
         self._name = None
         self._cur_loc = location
-        self._rows = "12345678"
+        self._rows = "12345678"   # CHANGE THIS PLZ
+        self._rows_2 = "87654321"   # CHANGE THIS PLZ
         self._cols = "abcdefgh"
 
         self._directions = {"N": (0, 1), "NE": (1, 1), "E": (1, 0),
@@ -109,30 +110,74 @@ class GamePiece:
     def add_move(self, move):
         self._possible_moves.update(move)
 
-    def get_possible_moves(self) -> dict:
-        self._possible_moves.clear()
+    def get_board_col_row(self, loc: str) -> (int, int):
+        """
+        Returns board grid coordinates for given location
+        :param loc: Chess coordinate location, example "a1"
+        :return: Grid coordinates for given location
+        """
+        col, row = loc[0], loc[1]
+        return self._cols.index(col), self._rows.index(row)
 
+    def get_board_loc(self, loc: str, board):
+        """
+        Retrieves value at given board location
+        :param loc: Chess coordinate location, example "a1"
+        :return: Piece if piece at given location, otherwise None
+        """
+        col, row = self.get_board_col_row(loc)
+        return board[7-row][col]
+
+    def get_possible_moves(self, board):
+        self._possible_moves.clear()
         for directional_move in self._move_set:
-            dir_move_set = self.add_direction_move_set(directional_move)
-            self._possible_moves.update(dir_move_set)
+            path = []
+            valid_move = True
+
+            move_step = self._directions[directional_move]
+            col, row = board.get_board_col_row(self._cur_loc)
+
+            col += move_step[0]  # starting loc
+            row += move_step[1]
+            move_count = 0
+
+            while valid_move and col in range(8) and row in range(8) and move_count < self._max_move:
+                target = board.get_location_format(col, row)
+                target_piece = board.get_board_loc(target)
+
+                if target_piece is not None:
+
+                    if target_piece.get_player() == self._player:
+                        valid_move = False
+
+                    else:
+                        path.append(target)
+                        self._possible_moves[target] = deepcopy(path)
+                        valid_move = False
+                else:
+
+                    path.append(target)
+                    self._possible_moves[target] = deepcopy(path)
+                move_count += 1
+
+                col += move_step[0]  # starting loc
+                row += move_step[1]
 
         return self._possible_moves
 
     def add_direction_move_set(self, direction):
         """
-
         :param direction: N, NE, E, etc; piece movement direction to find moves
         :return: All possible moves a piece can make in a given direction
         """
         # Get coordinates required to move piece in given direction
         move_step = self._directions[direction]
+        possible_moves = []
+        spaces_moved = 0
 
         cur_loc = self.get_grid_col_row(self._cur_loc)  # str coordinate to int
         col = cur_loc[0] + move_step[0]  # starting loc
         row = cur_loc[1] + move_step[1]
-
-        possible_moves = []
-        spaces_moved = 0
 
         # Find all potential moves from current position
         while col in range(8) and row in range(8) and spaces_moved < self._max_move:
@@ -146,30 +191,31 @@ class GamePiece:
 
         # Find the path to each potential move from current piece location
         all_move_sets = dict()
-        for targets in possible_moves:
-            all_move_sets[targets] = self.find_path(targets, move_step)
+        for target in possible_moves:
+            all_move_sets[target] = self.find_path(target, move_step)
 
         return all_move_sets
 
     def find_path(self, target, move_step):
         """
-
         :param target: location piece is trying to move
         :param move_step: step increments to get to target
         :return: path required to reach target
         """
         move_path = []
-        cur_loc = self.get_grid_col_row(self._cur_loc)
-        col, row = cur_loc[0], cur_loc[1]
+        cur_loc = self._cur_loc
 
         while cur_loc != target:
-            col += move_step[0]
-            row += move_step[1]
-            cur_loc = self.format_grid_loc(col, row)
+            cur_loc = self._get_target_location(cur_loc, move_step)
             move_path.append(cur_loc)
 
         return move_path
 
+    def _get_target_location(self, cur_loc: str, move_step: tuple):
+        col, row = self.get_grid_col_row(cur_loc)
+        col += move_step[0]
+        row += move_step[1]
+        return self.format_grid_loc(col, row)
 
 class Queen(GamePiece):
     def __init__(self, location):

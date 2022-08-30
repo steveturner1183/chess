@@ -116,6 +116,47 @@ class Chess:
         # check? checkmate? draw?
         # restart loop
 
+    def validate_move(self, current_loc, target_loc):
+        cur_piece = self._board.get_board_loc(current_loc)
+        target_piece = self._board.get_board_loc(target_loc)
+
+        move_type = "MOVE" if target_piece is None else "CAPTURE"
+
+        if cur_piece.get_name() == "Pawn":
+            move_list = cur_piece.get_possible_moves()
+            if len(move_list["EN_PASSANT"]) > 0:
+                if target_loc == move_list["EN_PASSANT"][1]:
+                    if target_piece is not None:
+                        return False
+                    else:
+                        self._en_passant = True
+                        return True
+            else:
+                move_list = move_list[move_type]
+
+        else:
+            move_list = cur_piece.get_possible_moves(self._board)
+
+        # Move location is not in piece's move set
+        if target_loc not in move_list:
+            logging.debug("Not in moves")
+            return False
+
+        # Check if path is blocked
+        if not self._board.verify_path_is_clear(target_path=move_list[target_loc]):
+            logging.debug("Path blocked")
+            return False
+
+        if move_type == "CAPTURE":
+            # Check that target space is empty or oppenents pieces
+            if cur_piece.get_player() == target_piece.get_player():
+                logging.debug("curPlayer={} == tarPlayer={}".format(
+                    cur_piece.get_player(), target_piece.get_player())
+                    )
+                return False
+
+        return True
+
 
 if __name__ == "__main__":
     logging.debug("----test_queen_pawn_move----")

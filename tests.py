@@ -1,16 +1,24 @@
 import unittest
 from pieces import *
 from board import *
-from chess import *
-import logging
-logging.basicConfig(level=logging.DEBUG)
+from chess import Chess
+
+DEBUG = True
 
 
 class TestPieces(unittest.TestCase):
+    def empty_board_test(self, piece):
+        piece.set_player(1)
+        p1 = Player(1, "W")
+        p2 = Player(2, "B")
+        board = GameBoard(p1, p2)
+        board._game_board = [[None] * 8 for i in range(8)]
+        board.set_board_loc("e5", piece)
+        return piece.get_possible_moves(board)
 
     def test_queen(self):
         queen = Queen("e5")
-        queen.set_player("player_1")
+        actual = self.empty_board_test(queen)
         expected = {
             # South
             "e1": ["e4", "e3", "e2", "e1"], "e2": ["e4", "e3", "e2"],
@@ -32,12 +40,11 @@ class TestPieces(unittest.TestCase):
             "d4": ["d4"], "c3": ["d4", "c3"], "b2": ["d4", "c3", "b2"],
             "a1": ["d4", "c3", "b2", "a1"]
         }
-        actual = queen.get_possible_moves()
         self.assertEqual(expected, actual)
 
     def test_king(self):
         king = King("e5")
-        king.set_player("player_1")
+        actual = self.empty_board_test(king)
         expected = {
             # South
             "e4": ["e4"],
@@ -56,12 +63,11 @@ class TestPieces(unittest.TestCase):
             # Northwest
             "d4": ["d4"],
         }
-        actual = king.get_possible_moves()
         self.assertEqual(expected, actual)
 
     def test_rook(self):
         rook = Rook("e5")
-        rook.set_player("player_1")
+        actual = self.empty_board_test(rook)
         expected = {
             # South
             "e1": ["e4", "e3", "e2", "e1"], "e2": ["e4", "e3", "e2"],
@@ -74,11 +80,11 @@ class TestPieces(unittest.TestCase):
             "d5": ["d5"], "c5": ["d5", "c5"], "b5": ["d5", "c5", "b5"],
             "a5": ["d5", "c5", "b5", "a5"]
         }
-        actual = rook.get_possible_moves()
         self.assertEqual(expected, actual)
 
     def test_bishop(self):
         bishop = Bishop("e5")
+        actual = self.empty_board_test(bishop)
         expected = {
             # Northeast
             "f4": ["f4"], "g3": ["f4", "g3"], "h2": ["f4", "g3", "h2"],
@@ -90,101 +96,123 @@ class TestPieces(unittest.TestCase):
             "d4": ["d4"], "c3": ["d4", "c3"], "b2": ["d4", "c3", "b2"],
             "a1": ["d4", "c3", "b2", "a1"]
         }
-        actual = bishop.get_possible_moves()
         self.assertEqual(expected, actual)
 
-    """ REDIZZLEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE########@%#$^%$&34m
-    def test_pawn_first_move(self):
-        pawn = Pawn("e5")
-        pawn.set_player(1)
+    def test_knight_move(self):
+        knight = Knight("e5")
+        actual = self.empty_board_test(knight)
+
         expected = {
-
             # North
-            "e6": ["e6"],
-            "e7": ["e6", "e7"],
+            "d7": ["d7"],
+            "f7": ["f7"],
 
+            # East
+            "g6": ["g6"],
+            "g4": ["g4"],
+
+            # South
+            "f3": ["f3"],
+            "d3": ["d3"],
+
+            # West
+            "c6": ["c6"],
+            "c4": ["c4"]
         }
-        actual = pawn.get_possible_moves()
-        self.assertEqual(expected, actual)
+
+
+        self.assertDictEqual(expected, actual)
 
     def test_pawn_second_move(self):
         pawn = Pawn("e5")
         pawn.set_player(1)
+        board = [[None] * 8 for i in range(8)]
         expected = {
             # North
-            "e6": ["e6"],
+            "MOVE": {"e6": ["e6"]},
+            "CAPTURE": {"d6": ["d6"], "f6": ["f6"]},
+            "EN_PASSANT": []
         }
         pawn.made_first_move()
         actual = pawn.get_possible_moves()
-        self.assertEqual(expected, actual)
-    """
+        self.assertDictEqual(expected, actual)
 
-    def test_pawn_en_passant(self):
-        game = Chess()
-        moves = ["d2 d4", "a7 a6", "d4 d5", "e7 e5", "d5 e6"]
-        for move in moves:
-            logging.debug("Testing move {}".format(move))
-            self.assertTrue(game.check_game_rules(move))
-            game.make_move(move[:2], move[-2:])
-            game.set_player_turn()
+    def test_pawn_first_move(self):
+        pawn = Pawn("e5")
+        pawn.set_player(1)
+        expected = {
+            # North
+            "MOVE": {"e6": ["e6"], "e7": ["e6", "e7"]},
+            "CAPTURE": {"d6": ["d6"], "f6": ["f6"]},
+            "EN_PASSANT": []
+        }
+        actual = pawn.get_possible_moves()
+        self.assertDictEqual(expected, actual)
 
-    def test_blocked_pawn_move_1(self):
-        logging.debug("----test_blocked_pawn_move_1----")
-        game = Chess()
-        moves = ["b1 b3", "a7 a6", "b2 b3"]
-        count = 0
-        for move in moves:
-            count += 1
-            logging.debug("Testing move {}".format(move))
-            if count == 3:
-                self.assertFalse(game.check_game_rules(move))
-            else:
-                game.make_move(move[:2], move[-2:])
-                game.set_player_turn()
+    ##### TEST MOVES ############
 
-    def test_blocked_pawn_move_2(self):
-        logging.debug("T----test_blocked_pawn_move_2----")
-        game = Chess()
-        moves = ["a2 a4", "a7 a5", "a4 a5"]
-        count = 0
-        for move in moves:
-            count += 1
-            logging.debug("Testing move {}".format(move))
-            if count == 3:
-                self.assertFalse(game.check_game_rules(move))
-            else:
-                game.make_move(move[:2], move[-2:])
-                game.set_player_turn()
+    def simulate_moves(self, true_moves, false_move):
+        if DEBUG:
+            import inspect
+            curframe = inspect.currentframe()
+            calframe = inspect.getouterframes(curframe, 2)
+            logging.debug("----{}-----".format(calframe[1][3]))
 
-    def test_queen_pawn_move(self):
-        logging.debug("----test_queen_pawn_move----")
-        game = Chess()
-        move = "d1 d2"
-        self.assertFalse(game.check_game_rules(move))
+        chess = Chess()
 
-    def test_king_check(self):
-        logging.debug("----test_king_check----")
-        game = Chess()
-        moves = ["e2 e3", "d7 d6", "f1 b5"]
+        if true_moves is not None:
+            for move in true_moves:
+                if DEBUG:
+                    logging.debug("Testing move {}".format(move))
 
-        for move in moves:
-            self.assertTrue(game.check_game_rules(move))
-            game.make_move(move[:2], move[-2:])
-            game.set_player_turn()
+                self.assertTrue(chess.validate_move(move[:2], move[-2:]))
+                chess._board.move_piece(move[:2], move[-2:])
 
-        self.assertTrue(game._board._p2._in_check)
+        if false_move is not None:
+            if DEBUG:
+                logging.debug("Testing move {}".format(false_move))
 
+            self.assertFalse(
+                chess.validate_move(false_move[0][:2], false_move[0][-2:]))
 
-    def test_king_checkmate(self):
-        logging.debug("----test_king_checkmate----")
-        game = Chess()
-        moves = ["e2 e4", "f7 f6", "d1 e2", "g7 g5", "e2 h5"]
+    def test_pawn_move(self):
+        true_moves = ["a7 a6"]
+        false_move = None
+        self.simulate_moves(true_moves, false_move)
 
-        for move in moves:
-            logging.debug("Testing {}".format(move))
-            self.assertTrue(game.check_game_rules(move))
-            game.make_move(move[:2], move[-2:])
-            game.set_player_turn()
+    def test_blocked_move(self):
+        true_moves = None
+        false_move = ["a1 a4"]
+        self.simulate_moves(true_moves, false_move)
+
+    def test_en_passant(self):
+        true_moves = ["e2 e4", "a7 a6", "e4 e5", "f7 f5", "e5 f6"]
+        false_move = None
+        self.simulate_moves(true_moves, false_move)
+
+    def test_pawn_diag_capture(self):
+        true_moves = ["e2 e4", "a7 a6", "e4 e5", "f7 f6", "e5" "f6"]
+        false_moves = None
+        self.simulate_moves(true_moves, false_moves)
+
+    def test_pawn_diag_move(self):
+        true_moves = ["e2 e4", "a7 a6", "e4 e5", "f7 f6"]
+        false_moves = ["e5" "d6"]
+        self.simulate_moves(true_moves, false_moves)
+
+    def test_pawn_move_only(self):
+        true_moves = ["e2 e4", "e7 e5"]
+        false_moves = ["e4 e5"]
+        self.simulate_moves(true_moves, false_moves)
+
+    def test_knight_move_and_capture(self):
+        true_moves = ["b1 c3", "d7 d5", "c3 d5"]
+        false_moves = None
+        self.simulate_moves(true_moves, false_moves)
+
+    def test_check(self):
+        pass
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,5 +1,6 @@
 from pieces import *
 from player import Player
+from rules import ChessRules
 import logging
 logging.basicConfig(level=logging.DEBUG)
 from typing import Union
@@ -11,6 +12,7 @@ class GameBoard:
         self._rows = "12345678"
         self._p1 = player_1
         self._p2 = player_2
+        self._rules = ChessRules()
 
         self._game_board = []
         self.set_up_board()
@@ -66,6 +68,7 @@ class GameBoard:
         self._p1.set_king(piece_set.get_king(1))
         self._p2.set_king(piece_set.get_king(2))
 
+
         self._game_board = [
             [piece for piece in self._p1.get_roster()[:8]],
             [piece for piece in self._p1.get_roster()[8:]],
@@ -74,42 +77,6 @@ class GameBoard:
             [piece for piece in self._p2.get_roster()[:8]]
         ]
 
-    """
-    def set_all_poss_moves(self):
-
-        logging.disable(logging.DEBUG)
-
-        for player in self._p1, self._p2:
-            possible_moves = []
-            roster = player.get_roster()
-
-            for piece in roster:
-                if piece.get_name() == "Pawn":
-                    # NEED TO ACCOUNT FOR MOVE AND CAPTURE !!!!!!!!!!!!!!!!!!!!
-                    all_moves = piece.get_possible_moves()
-                    moves = all_moves["MOVE"]
-                    captures = all_moves["CAPTURE"]
-                    piece_moves = dict(**moves, **captures)
-                    if len(all_moves["EN_PASSANT"]) > 0:
-                        cur_loc = piece.get_location()
-                        target = all_moves["EN_PASSANT"][1]
-                        valid_move_check = self.validate_move(cur_loc, target)
-                        if valid_move_check:
-                            possible_moves.append([target, piece])
-                else:
-                    piece_moves = piece.get_possible_moves()
-
-                cur_loc = piece.get_location()
-
-                for target in piece_moves:
-                    valid_move_check = self.validate_move(cur_loc, target)
-
-                    if valid_move_check is True:
-                        possible_moves.append([target, piece])
-
-            player.set_pos_moves(possible_moves)
-        logging.disable(logging.NOTSET)
-    """
 
     def verify_path_is_clear(self, target_path):
         """
@@ -124,10 +91,11 @@ class GameBoard:
     def validate_move(self, current_loc, target_loc):
         cur_piece = self.get_board_loc(current_loc)
         target_piece = self.get_board_loc(target_loc)
-        move_list = cur_piece.get_possible_moves()
+
         move_type = "MOVE" if target_piece is None else "CAPTURE"
 
         if cur_piece.get_name() == "Pawn":
+            move_list = cur_piece.get_possible_moves()
             if len(move_list["EN_PASSANT"]) > 0:
                 if target_loc == move_list["EN_PASSANT"][1]:
                     if target_piece is not None:
@@ -137,6 +105,9 @@ class GameBoard:
                         return True
             else:
                 move_list = move_list[move_type]
+
+        else:
+            move_list = cur_piece.get_possible_moves(self._game_board)
 
         # Move location is not in piece's move set
         if target_loc not in move_list:
@@ -201,7 +172,7 @@ class GameBoard:
             cur_piece.made_first_move()
 
             # Chess rule - If piece moved 2 spaces, other pawns can en passant
-            self.check_en_passant(cur_piece, cur_loc, tar_loc)
+            self._rules.check_en_passant(cur_piece, cur_loc, tar_loc, self._game_board)
 
         # CHECK
         if cur_piece.get_player() == 1:
@@ -216,40 +187,6 @@ class GameBoard:
         # reset board after moved piece
         ############## self.set_all_poss_moves()
 
-    def check_en_passant(self, pawn, start_loc , end_loc):
-        """
-        Checks if given pawn can be captured from en passant, and sets the
-        capturing pieces available moves to include en passant if true
-        :param pawn:
-        :return:
-        """
-        for row in self._game_board:
-            for piece in row:
-                if piece is not None and piece.get_name() == "Pawn":
-                    piece.clear_en_passant()
-
-        # Only Pawn that moves 2 spaces is eligable
-        if abs(self._rows.index(start_loc[1]) - self._rows.index(end_loc[1])) != 2:
-            return
-
-        cur_loc = pawn.get_location()
-        cur_col, cur_row = self.get_board_col_row(cur_loc)
-
-        # Check east and west neighbor to see if they can perform en passant next turn
-        for direction in 1, -1:
-            neighbor_col = cur_col + direction
-            board_boundary = range(8)
-
-            if neighbor_col in board_boundary:
-                neighbor = self.get_board_loc(self._cols[neighbor_col] + cur_loc[1])
-
-                if neighbor is not None and neighbor.get_name() == "Pawn":
-                    if neighbor.get_player() == 1:  # Move north of target pawn
-                        en_move = cur_loc[0] + self._rows[cur_row + 1]
-                    else:  # Move south
-                        en_move = cur_loc[0] + self._rows[cur_row - 1]
-
-                    neighbor.set_en_passant(cur_loc, en_move)
 
 ##@@#@#@ WHAT IF A PIECE MOVES OUT OF THE WAY AND PIECE PUT INT CHECK??????
     def king_check(self, player_move):
@@ -265,14 +202,15 @@ class GameBoard:
         king_loc = king.get_location()
 
         for piece in roster:
-            moves = piece.get_possible_moves()
 
             if piece.get_name() == "Pawn":
+                moves = piece.get_possible_moves()
                 if king_loc in moves["CAPTURE"]:
                     in_check = self.validate_move(piece.get_location(), king_loc)
                     if in_check:
                         check = True
             else:
+                moves = piece.get_possible_moves(self)
                 if king_loc in moves:
                     in_check = self.validate_move(piece.get_location(), king_loc)
                     if in_check:
@@ -314,7 +252,7 @@ class GameBoard:
 
                 ### NEED TO SIMULATE?
                 if piece.get_name() == "King":
-                    king_moves = king.get_possible_moves()
+                    king_moves = king.get_possible_moves(self._game_board)
 
                     for king_move in king_moves:
                         if self.validate_move(king_loc, king_move):
@@ -332,7 +270,12 @@ class GameBoard:
                 #  3. Another piece blocks path to the king
                 #  4. Another piece captures the attacking piece
                 elif piece.get_name() != "King":
-                    if move in piece.get_possible_moves():
+                    if piece.get_name() == "Pawn":
+                        piece.get_possible_moves()
+                    else:
+                        piece.get_possible_moves(self._game_board)
+
+                    if move in piece.get_possible_moves(self._game_board):
                         if self.validate_move(piece.get_location(), move):
                             logging.debug("VALID -> {} to {}".format(piece, move))
                             return False
@@ -343,7 +286,7 @@ class GameBoard:
     def king_self_check(self, king_move, opp_roster):
         for piece in opp_roster:
             if piece.get_name() != "Pawn":
-                all_moves = piece.get_possible_moves()
+                all_moves = piece.get_possible_moves(self._game_board)
                 if king_move in all_moves:
                     return True
         return False
