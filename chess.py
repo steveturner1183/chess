@@ -96,7 +96,7 @@ class Chess:
             logging.debug("Not players turn")
             return False
 
-        if self._board.validate_move(cur_loc, tar_loc) is False:
+        if self.validate_move(cur_loc, tar_loc) is False:
             return False
 
         return True
@@ -123,19 +123,16 @@ class Chess:
         move_type = "MOVE" if target_piece is None else "CAPTURE"
 
         if cur_piece.get_name() == "Pawn":
-            move_list = cur_piece.get_possible_moves()
-            if len(move_list["EN_PASSANT"]) > 0:
-                if target_loc == move_list["EN_PASSANT"][1]:
+            if cur_piece.available_en_passant:
+                move_list = cur_piece.get_en_passant_moves()
+                if target_loc == move_list["Move"]:
                     if target_piece is not None:
                         return False
                     else:
                         self._en_passant = True
                         return True
-            else:
-                move_list = move_list[move_type]
 
-        else:
-            move_list = cur_piece.get_possible_moves(self._board)
+        move_list = cur_piece.get_possible_moves(self._board)
 
         # Move location is not in piece's move set
         if target_loc not in move_list:

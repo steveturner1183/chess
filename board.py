@@ -77,7 +77,6 @@ class GameBoard:
             [piece for piece in self._p2.get_roster()[:8]]
         ]
 
-
     def verify_path_is_clear(self, target_path):
         """
         :param target_path: Path to location piece is trying to move
@@ -87,52 +86,6 @@ class GameBoard:
             if self.get_board_loc(step) is not None:
                 return False
         return True
-
-    def validate_move(self, current_loc, target_loc):
-        cur_piece = self.get_board_loc(current_loc)
-        target_piece = self.get_board_loc(target_loc)
-
-        move_type = "MOVE" if target_piece is None else "CAPTURE"
-
-        if cur_piece.get_name() == "Pawn":
-            move_list = cur_piece.get_possible_moves()
-            if len(move_list["EN_PASSANT"]) > 0:
-                if target_loc == move_list["EN_PASSANT"][1]:
-                    if target_piece is not None:
-                        return False
-                    else:
-                        self._en_passant = True
-                        return True
-            else:
-                move_list = move_list[move_type]
-
-        else:
-            move_list = cur_piece.get_possible_moves(self._game_board)
-
-        # Move location is not in piece's move set
-        if target_loc not in move_list:
-            logging.debug("Not in moves")
-            return False
-
-        # Check if path is blocked
-        if not self.verify_path_is_clear(target_path=move_list[target_loc]):
-            logging.debug("Path blocked")
-            return False
-
-        if move_type == "CAPTURE":
-            # Check that target space is empty or oppenents pieces
-            if cur_piece.get_player() == target_piece.get_player():
-                logging.debug("curPlayer={} == tarPlayer={}".format(
-                    cur_piece.get_player(), target_piece.get_player())
-                    )
-                return False
-
-        return True
-
-    def board_state_moves(self):
-        pass
-        # rook / castle
-        # transformation
 
     def move_piece(self, cur_loc, tar_loc):
         """
@@ -202,21 +155,13 @@ class GameBoard:
         king_loc = king.get_location()
 
         for piece in roster:
-
-            if piece.get_name() == "Pawn":
-                moves = piece.get_possible_moves()
-                if king_loc in moves["CAPTURE"]:
-                    in_check = self.validate_move(piece.get_location(), king_loc)
-                    if in_check:
-                        check = True
-            else:
-                moves = piece.get_possible_moves(self)
-                if king_loc in moves:
-                    in_check = self.validate_move(piece.get_location(), king_loc)
-                    if in_check:
-                        check = True
-                    if self.king_checkmate(player_move, moves[king_loc], piece):
-                        logging.debug("YOU DID IT")
+            moves = piece.get_possible_moves(self)
+            if king_loc in moves:
+                in_check = self.validate_move(piece.get_location(), king_loc)
+                if in_check:
+                    check = True
+                if self.king_checkmate(player_move, moves[king_loc], piece):
+                    logging.debug("YOU DID IT")
 
         return check
 
@@ -273,9 +218,9 @@ class GameBoard:
                     if piece.get_name() == "Pawn":
                         piece.get_possible_moves()
                     else:
-                        piece.get_possible_moves(self._game_board)
+                        piece.get_possible_moves(self)
 
-                    if move in piece.get_possible_moves(self._game_board):
+                    if move in piece.get_possible_moves(self):
                         if self.validate_move(piece.get_location(), move):
                             logging.debug("VALID -> {} to {}".format(piece, move))
                             return False

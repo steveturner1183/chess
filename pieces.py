@@ -51,31 +51,21 @@ class PieceSet:
 
 class GamePiece:
     def __init__(self, location):
-        self._button = None
         self._image_path = None
         self._player = None
         self._name = None
         self._cur_loc = location
-        self._rows = "12345678"   # CHANGE THIS PLZ
-        self._rows_2 = "87654321"   # CHANGE THIS PLZ
+        self._rows = "12345678"
         self._cols = "abcdefgh"
-
         self._directions = {"N": (0, 1), "NE": (1, 1), "E": (1, 0),
                             "SE": (1, -1), "S": (0, -1), "SW": (-1, -1),
                             "W": (-1, 0), "NW": (-1, 1)}
-
-        self._move_set = []
         self._max_move = 7
         self._possible_moves = dict()
+        self._move_set = []
 
     def __repr__(self):
         return repr("P" + str(self._player) + "-" + self._name + "-" + self._cur_loc)
-
-    def set_button(self, button):
-        self._button = button
-
-    def get_button(self):
-        return self._button
 
     def set_image_path(self, color):
         path = color + "_" + self._name + ".PNG"
@@ -99,123 +89,49 @@ class GamePiece:
     def get_name(self):
         return self._name
 
-    def format_grid_loc(self, col, row):
-        return self._cols[col] + self._rows[row]
+    def valid_move_only(self, target):
+        if target is None:
+            return True
+        else:
+            return False
 
-    def get_grid_col_row(self, location): ########################### CHANGE THESE TO BOARD
-        col = location[0]
-        row = location[1]
-        return self._cols.index(col), self._rows.index(row)
-
-    def add_move(self, move):
-        self._possible_moves.update(move)
-
-    def get_board_col_row(self, loc: str) -> (int, int):
-        """
-        Returns board grid coordinates for given location
-        :param loc: Chess coordinate location, example "a1"
-        :return: Grid coordinates for given location
-        """
-        col, row = loc[0], loc[1]
-        return self._cols.index(col), self._rows.index(row)
-
-    def get_board_loc(self, loc: str, board):
-        """
-        Retrieves value at given board location
-        :param loc: Chess coordinate location, example "a1"
-        :return: Piece if piece at given location, otherwise None
-        """
-        col, row = self.get_board_col_row(loc)
-        return board[7-row][col]
+    def valid_capture_only(self, target):
+        if target is not None:
+            if target.get_player() != self._player:
+                return True
+        return False
 
     def get_possible_moves(self, board):
         self._possible_moves.clear()
+
         for directional_move in self._move_set:
             path = []
             valid_move = True
-
             move_step = self._directions[directional_move]
-            col, row = board.get_board_col_row(self._cur_loc)
-
-            col += move_step[0]  # starting loc
-            row += move_step[1]
             move_count = 0
 
+            col, row = board.get_board_col_row(self._cur_loc)
+            col += move_step[0]  # starting loc
+            row += move_step[1]
+
             while valid_move and col in range(8) and row in range(8) and move_count < self._max_move:
-                target = board.get_location_format(col, row)
-                target_piece = board.get_board_loc(target)
+                target_loc = board.get_location_format(col, row)
+                target_piece = board.get_board_loc(target_loc)
 
-                if target_piece is not None:
+                valid_move_only = self.valid_move_only(target_piece)
+                valid_capture_only = self.valid_capture_only(target_piece)
 
-                    if target_piece.get_player() == self._player:
-                        valid_move = False
-
-                    else:
-                        path.append(target)
-                        self._possible_moves[target] = deepcopy(path)
-                        valid_move = False
+                if valid_move_only or valid_capture_only:
+                    path.append(target_loc)
+                    self._possible_moves[target_loc] = deepcopy(path)
                 else:
+                    valid_move = False
 
-                    path.append(target)
-                    self._possible_moves[target] = deepcopy(path)
                 move_count += 1
-
                 col += move_step[0]  # starting loc
                 row += move_step[1]
 
         return self._possible_moves
-
-    def add_direction_move_set(self, direction):
-        """
-        :param direction: N, NE, E, etc; piece movement direction to find moves
-        :return: All possible moves a piece can make in a given direction
-        """
-        # Get coordinates required to move piece in given direction
-        move_step = self._directions[direction]
-        possible_moves = []
-        spaces_moved = 0
-
-        cur_loc = self.get_grid_col_row(self._cur_loc)  # str coordinate to int
-        col = cur_loc[0] + move_step[0]  # starting loc
-        row = cur_loc[1] + move_step[1]
-
-        # Find all potential moves from current position
-        while col in range(8) and row in range(8) and spaces_moved < self._max_move:
-            # Current piece can move to target space
-            target = self.format_grid_loc(col, row)
-            possible_moves.append(target)
-
-            spaces_moved += 1
-            col += move_step[0]
-            row += move_step[1]
-
-        # Find the path to each potential move from current piece location
-        all_move_sets = dict()
-        for target in possible_moves:
-            all_move_sets[target] = self.find_path(target, move_step)
-
-        return all_move_sets
-
-    def find_path(self, target, move_step):
-        """
-        :param target: location piece is trying to move
-        :param move_step: step increments to get to target
-        :return: path required to reach target
-        """
-        move_path = []
-        cur_loc = self._cur_loc
-
-        while cur_loc != target:
-            cur_loc = self._get_target_location(cur_loc, move_step)
-            move_path.append(cur_loc)
-
-        return move_path
-
-    def _get_target_location(self, cur_loc: str, move_step: tuple):
-        col, row = self.get_grid_col_row(cur_loc)
-        col += move_step[0]
-        row += move_step[1]
-        return self.format_grid_loc(col, row)
 
 class Queen(GamePiece):
     def __init__(self, location):
@@ -238,65 +154,72 @@ class Pawn(GamePiece):  ### Need capture move and en passant  ## need transforma
         self._name = "Pawn"
         self._first_move_made = False
         self._max_move = 2
-        self._possible_moves = {
-            "MOVE": dict(),
-            "CAPTURE": dict(),
-            "EN_PASSANT": []
-        }
-        self._capture_set = []
         self._move_set = []
         self._en_passant = False
-        self._en_passant_locs = []
+        self._en_passant_locs = {"Capture": None, "Move": None}
 
     def set_en_passant(self, capture_loc, move_loc):
         self._en_passant = True
-        self._en_passant_locs.append(capture_loc)
-        self._en_passant_locs.append(move_loc)
+        self._en_passant_locs["Capture"] = capture_loc
+        self._en_passant_locs["Move"] = move_loc
 
     def clear_en_passant(self):
         self._en_passant = False
-        self._en_passant_locs.clear()
-        self._possible_moves["EN_PASSANT"].clear()
+        self._en_passant_locs["Capture"] = None
+        self._en_passant_locs["Move"] = None
 
-    def get_en_passant_capture(self):
-        return self._en_passant_locs[0]
+    def available_en_passant(self):
+        return self._en_passant
+
+    def get_en_passant_moves(self):
+        return self._en_passant_locs
 
     def set_player(self, player):
         self._player = player
 
         if self._player == 1:
-            self._move_set = ["N"]
-            self._capture_set = ["NW", "NE"]
+            self._move_set = ["N", "NW", "NE"]
         else:
-            self._move_set = ["S"]
-            self._capture_set = ["SW", "SE"]
+            self._move_set = ["S", "SW", "SE"]
 
     def made_first_move(self):  ### NEED TO CHANGE IN BOARD ###
         self._max_move = 1
         self._first_move_made = True
 
-    def get_possible_moves(self):
-        self._possible_moves["MOVE"].clear()
-        self._possible_moves["CAPTURE"].clear()
+    def get_possible_moves(self, board):
+        self._possible_moves.clear()
 
         for directional_move in self._move_set:
-            dir_move_set = self.add_direction_move_set(directional_move)
-            self._possible_moves["MOVE"].update(dir_move_set)
 
-        temp_move = self._max_move
-        self._max_move = 1
+            if directional_move == "N":
+                move_check = self.valid_move_only
+            else:
+                move_check = self.valid_capture_only
 
-        for directional_capture in self._capture_set:
-            dir_capture_set = self.add_direction_move_set(directional_capture)
-            self._possible_moves["CAPTURE"].update(dir_capture_set)
+            path = []
+            valid_move = True
+            move_step = self._directions[directional_move]
+            move_count = 0
 
-        self._max_move = temp_move
+            col, row = board.get_board_col_row(self._cur_loc)
+            col += move_step[0]  # starting loc
+            row += move_step[1]
 
-        if self._en_passant is True:
-            self._possible_moves["EN_PASSANT"] = self._en_passant_locs
+            while valid_move and col in range(8) and row in range(8) and move_count < self._max_move:
+                target_loc = board.get_location_format(col, row)
+                target_piece = board.get_board_loc(target_loc)
+
+                if move_check(target_piece):
+                    path.append(target_loc)
+                    self._possible_moves[target_loc] = deepcopy(path)
+                else:
+                    valid_move = False
+
+                move_count += 1
+                col += move_step[0]  # starting loc
+                row += move_step[1]
 
         return self._possible_moves
-
 
 class Knight(GamePiece):
     def __init__(self, location):
