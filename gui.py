@@ -87,25 +87,32 @@ def main():
         # Event wait??
 
         clock.tick(FPS)
-        for event in pg.event.get():
-            if event.type == pg.QUIT:
-                run = False
-            elif event.type == pg.MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    loc = get_square_coordinate()
-                    if loc is not None:
-                        selected_piece = CHESS.get_board_state()[loc]
-                        start_loc = loc
-            elif event.type == pg.MOUSEBUTTONUP:
-                if event.button == 1:
-                    selected_piece = None
-                    end_loc = get_square_coordinate()
-                    if end_loc is not None:
-                        move = start_loc + " " + end_loc
-                        valid_move = CHESS.check_game_rules(move)
-                        if valid_move:
-                            CHESS.make_move(move[:2], move[-2:])
-                            CHESS.set_player_turn()
+        event = pg.event.wait()
+        if event.type == pg.QUIT:
+            run = False
+        elif event.type == pg.MOUSEBUTTONDOWN:
+            if event.button == 1:
+                loc = get_square_coordinate()
+                if loc is not None:
+                    selected_piece = CHESS.get_board_state()[loc]
+                    start_loc = loc
+
+        elif event.type == pg.MOUSEBUTTONUP:
+            if event.button == 1:
+                selected_piece = None
+                end_loc = get_square_coordinate()
+                if start_loc is not None and end_loc is not None:
+                    print(start_loc, end_loc)
+                    move = start_loc + " " + end_loc
+
+                    valid_move = CHESS.validate_move(move)
+                    if valid_move:
+                        CHESS.make_move(move)
+                        CHESS.king_check_status()
+                        if CHESS.get_game_status() != "INCOMPLETE":
+                            print("checkmate")
+                            run = False
+                        CHESS.set_player_turn()
 
         draw_window(selected_piece)
 

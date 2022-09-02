@@ -1,10 +1,11 @@
 from copy import deepcopy
+import logging
+
 
 class PieceSet:
     def __init__(self, p1_color):
         """
         Creates a roster for player 1 and 2 to use at the beginning of the game
-
         :param p1_color: White or black piece color chosen. Determines positions
         of King and Queen
         """
@@ -63,13 +64,21 @@ class GamePiece:
         self._max_move = 7
         self._possible_moves = dict()
         self._move_set = []
+        self._piece_has_moved = False
 
     def __repr__(self):
-        return repr("P" + str(self._player) + "-" + self._name + "-" + self._cur_loc)
+        return repr(
+            "P" + str(self._player) + "-" + self._name + "-" + self._cur_loc)
 
     def set_image_path(self, color):
         path = color + "_" + self._name + ".PNG"
         self._image_path = path
+
+    def set_has_moved(self):
+        self._piece_has_moved = True
+
+    def has_moved(self):
+        return self._piece_has_moved
 
     def get_image_path(self):
         return self._image_path
@@ -101,10 +110,14 @@ class GamePiece:
                 return True
         return False
 
-    def get_possible_moves(self, board):
+    def get_possible_moves(self, board): ### REMOVE THIS FROM HERE AND EVERYWHERE ELSE :(
+        return self._possible_moves
+
+    def set_possible_moves(self, board):
         self._possible_moves.clear()
 
         for directional_move in self._move_set:
+
             path = []
             valid_move = True
             move_step = self._directions[directional_move]
@@ -114,14 +127,21 @@ class GamePiece:
             col += move_step[0]  # starting loc
             row += move_step[1]
 
-            while valid_move and col in range(8) and row in range(8) and move_count < self._max_move:
+            while valid_move and col in range(8) and row in range(
+                    8) and move_count < self._max_move:
                 target_loc = board.get_location_format(col, row)
                 target_piece = board.get_board_loc(target_loc)
 
-                valid_move_only = self.valid_move_only(target_piece)
-                valid_capture_only = self.valid_capture_only(target_piece)
+                if self._name == "Pawn":
+                    if directional_move == "N" or directional_move == "S":
+                        move_check = self.valid_move_only(target_piece)
+                    else:
+                        move_check = self.valid_capture_only(target_piece)
+                else:
+                    move_check = self.valid_move_only(
+                        target_piece) or self.valid_capture_only(target_piece)
 
-                if valid_move_only or valid_capture_only:
+                if move_check:
                     path.append(target_loc)
                     self._possible_moves[target_loc] = deepcopy(path)
                 else:
@@ -132,6 +152,7 @@ class GamePiece:
                 row += move_step[1]
 
         return self._possible_moves
+
 
 class Queen(GamePiece):
     def __init__(self, location):
@@ -148,7 +169,8 @@ class King(GamePiece):
         self._max_move = 1
 
 
-class Pawn(GamePiece):  ### Need capture move and en passant  ## need transformation
+class Pawn(
+    GamePiece):  ### Need capture move and en passant  ## need transformation
     def __init__(self, location):
         super().__init__(location)
         self._name = "Pawn"
@@ -186,40 +208,6 @@ class Pawn(GamePiece):  ### Need capture move and en passant  ## need transforma
         self._max_move = 1
         self._first_move_made = True
 
-    def get_possible_moves(self, board):
-        self._possible_moves.clear()
-
-        for directional_move in self._move_set:
-
-            if directional_move == "N":
-                move_check = self.valid_move_only
-            else:
-                move_check = self.valid_capture_only
-
-            path = []
-            valid_move = True
-            move_step = self._directions[directional_move]
-            move_count = 0
-
-            col, row = board.get_board_col_row(self._cur_loc)
-            col += move_step[0]  # starting loc
-            row += move_step[1]
-
-            while valid_move and col in range(8) and row in range(8) and move_count < self._max_move:
-                target_loc = board.get_location_format(col, row)
-                target_piece = board.get_board_loc(target_loc)
-
-                if move_check(target_piece):
-                    path.append(target_loc)
-                    self._possible_moves[target_loc] = deepcopy(path)
-                else:
-                    valid_move = False
-
-                move_count += 1
-                col += move_step[0]  # starting loc
-                row += move_step[1]
-
-        return self._possible_moves
 
 class Knight(GamePiece):
     def __init__(self, location):

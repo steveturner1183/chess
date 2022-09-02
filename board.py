@@ -17,8 +17,11 @@ class GameBoard:
         self._game_board = []
         self.set_up_board()
 
-        ########self.set_all_poss_moves()
         self._en_passant = False
+        self._castle = False
+
+    def set_castle(self, value):
+        self._castle = value
 
     def get_location_format(self, col, row):
         return self._cols[col] + self._rows[row]
@@ -77,16 +80,15 @@ class GameBoard:
             [piece for piece in self._p2.get_roster()[:8]]
         ]
 
-    def verify_path_is_clear(self, target_path):
-        """
-        :param target_path: Path to location piece is trying to move
-        :return: True if path is clear, false if blocked
-        """
-        for step in target_path[:-1]:
-            if self.get_board_loc(step) is not None:
-                return False
-        return True
+        self.set_all_possible_moves()
 
+    def set_all_possible_moves(self):
+        for row in self._game_board:
+            for piece in row:
+                if piece is not None:
+                    piece.set_possible_moves(self)
+
+    #### King can move into Ccheck!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     def move_piece(self, cur_loc, tar_loc):
         """
         Change the board to match a verified move
@@ -101,14 +103,41 @@ class GameBoard:
         # Special moving sequence for en passant
         if self._en_passant is True:
             cap_loc = self.get_board_loc(cur_loc).get_en_passant_capture()
-            cap_col, cap_row = self.get_board_col_row(cap_loc)
             tar_piece = self.get_board_loc(cap_loc)
 
             self.set_board_loc(cap_loc, None)
             self._en_passant = False
 
-        # Remove captured piece from opposing players roster
+        if self._castle is True:
+            self.set_castle(False)
+            cur_row = self.get_board_col_row(cur_loc)[1]
+            cur_col, tar_col = self._cols.index(cur_loc[0]), self._cols.index(tar_loc[0])
 
+            logging.debug("cur col = {} and tar col = {}".format(cur_col, tar_col))
+            if cur_col > tar_col:  # Move left
+                rook_direction = 1
+                if cur_piece.get_player() == 1:
+                    rook_cur_loc = "a1"
+                else:
+                    rook_cur_loc = "a8"
+
+            else:
+                rook_direction = -1
+                if cur_piece.get_player() == 1:
+                    rook_cur_loc = "h1"
+                else:
+                    rook_cur_loc = "h8"
+
+            rook = self.get_board_loc(rook_cur_loc)
+            rook_col = tar_col + rook_direction
+            logging.debug("rook col = {}".format(rook_col))
+            rook_loc = self.get_location_format(rook_col, cur_row)
+            logging.debug("setting rook at {} to {}".format(rook_cur_loc, rook_loc))
+            self.set_board_loc(rook_loc, rook)
+            self.set_board_loc(rook_cur_loc, None)
+            rook.set_location(rook_loc)
+
+        # Remove captured piece from opposing players roster
         if tar_piece is not None:
             if cur_piece.get_player() == 1:
                 self._p2.remove_piece(tar_piece)
@@ -127,114 +156,10 @@ class GameBoard:
             # Chess rule - If piece moved 2 spaces, other pawns can en passant
             self._rules.check_en_passant(cur_piece, cur_loc, tar_loc, self._game_board)
 
-        # CHECK
-        if cur_piece.get_player() == 1:
-            check = self.king_check(1)
-            if check is True:
-                self._p2.set_in_check(True)
-        else:
-            check = self.king_check(2)
-            if check is True:
-                self._p1.set_in_check(True)
-
+        if cur_piece.get_name() == "Rook" or cur_piece.get_name() == "King":
+            cur_piece.set_has_moved()
         # reset board after moved piece
-        ############## self.set_all_poss_moves()
-
-
-##@@#@#@ WHAT IF A PIECE MOVES OUT OF THE WAY AND PIECE PUT INT CHECK??????
-    def king_check(self, player_move):
-        check = False
-
-        if player_move == 1:
-            king = self._p2.get_king()
-            roster = self._p1.get_roster()
-        else:
-            king = self._p1.get_king()
-            roster = self._p2.get_roster()
-
-        king_loc = king.get_location()
-
-        for piece in roster:
-            moves = piece.get_possible_moves(self)
-            if king_loc in moves:
-                in_check = self.validate_move(piece.get_location(), king_loc)
-                if in_check:
-                    check = True
-                if self.king_checkmate(player_move, moves[king_loc], piece):
-                    logging.debug("YOU DID IT")
-
-        return check
-
-    def king_checkmate(self, player_moved, moves, attack_piece):
-        """
-        Checks to see if opponents piece is in checkmate, i.e see if there are
-        any ways to get out of check
-
-        Chess Rule - Ways to get out of check:
-
-        1. King moves to new location
-        2. King captures attacking piece
-        3. Another piece blocks path to the king
-        4. Another piece captures the attacking piece
-
-        :param player_moved:
-        :param moves:
-        :return:
-        """
-        if player_moved == 1:
-            player = self._p1
-            opp_player = self._p2
-        else:
-            player = self._p2
-            opp_player = self._p1
-
-        king = opp_player.get_king()
-        king_loc = king.get_location()
-        roster = opp_player.get_roster()
-
-        for move in moves:
-            for piece in roster:
-
-                ### NEED TO SIMULATE?
-                if piece.get_name() == "King":
-                    king_moves = king.get_possible_moves(self._game_board)
-
-                    for king_move in king_moves:
-                        if self.validate_move(king_loc, king_move):
-                            #  2. King captures attacking piece
-                            if king_move == move:
-                                if move == attack_piece.get_location():
-                                    if not self.king_self_check(king_move, player.get_roster()):
-                                        return False
-
-                            #  1. King moves to new location
-                            if king_move != move and king_move not in moves:
-                                if not self.king_self_check(king_move, player.get_roster()):
-                                    return False
-
-                #  3. Another piece blocks path to the king
-                #  4. Another piece captures the attacking piece
-                elif piece.get_name() != "King":
-                    if piece.get_name() == "Pawn":
-                        piece.get_possible_moves()
-                    else:
-                        piece.get_possible_moves(self)
-
-                    if move in piece.get_possible_moves(self):
-                        if self.validate_move(piece.get_location(), move):
-                            logging.debug("VALID -> {} to {}".format(piece, move))
-                            return False
-
-        return True
-
-
-    def king_self_check(self, king_move, opp_roster):
-        for piece in opp_roster:
-            if piece.get_name() != "Pawn":
-                all_moves = piece.get_possible_moves(self._game_board)
-                if king_move in all_moves:
-                    return True
-        return False
+        self.set_all_possible_moves()
 
 
     def print_board(self):

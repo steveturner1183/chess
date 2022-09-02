@@ -14,6 +14,7 @@ class TestPieces(unittest.TestCase):
         board = GameBoard(p1, p2)
         board._game_board = [[None] * 8 for i in range(8)]
         board.set_board_loc("e5", piece)
+        piece.set_possible_moves(board)
         return piece.get_possible_moves(board)
 
     def test_queen(self):
@@ -120,33 +121,28 @@ class TestPieces(unittest.TestCase):
             "c4": ["c4"]
         }
 
-
         self.assertDictEqual(expected, actual)
 
     def test_pawn_second_move(self):
         pawn = Pawn("e5")
-        pawn.set_player(1)
-        board = [[None] * 8 for i in range(8)]
+        pawn.made_first_move()
+        actual = self.empty_board_test(pawn)
+
         expected = {
             # North
-            "MOVE": {"e6": ["e6"]},
-            "CAPTURE": {"d6": ["d6"], "f6": ["f6"]},
-            "EN_PASSANT": []
+            "e6": ["e6"]
         }
-        pawn.made_first_move()
-        actual = pawn.get_possible_moves()
+
         self.assertDictEqual(expected, actual)
 
     def test_pawn_first_move(self):
         pawn = Pawn("e5")
-        pawn.set_player(1)
+        actual = self.empty_board_test(pawn)
         expected = {
             # North
-            "MOVE": {"e6": ["e6"], "e7": ["e6", "e7"]},
-            "CAPTURE": {"d6": ["d6"], "f6": ["f6"]},
-            "EN_PASSANT": []
+            "e6": ["e6"], "e7": ["e6", "e7"]
         }
-        actual = pawn.get_possible_moves()
+
         self.assertDictEqual(expected, actual)
 
     ##### TEST MOVES ############
@@ -165,24 +161,25 @@ class TestPieces(unittest.TestCase):
                 if DEBUG:
                     logging.debug("Testing move {}".format(move))
 
-                self.assertTrue(chess.validate_move(move[:2], move[-2:]))
-                chess._board.move_piece(move[:2], move[-2:])
+                self.assertTrue(chess.validate_move(move))
+                chess.make_move(move)
+                chess.set_player_turn()
 
         if false_move is not None:
             if DEBUG:
                 logging.debug("Testing move {}".format(false_move))
 
             self.assertFalse(
-                chess.validate_move(false_move[0][:2], false_move[0][-2:]))
+                chess.validate_move(false_move))
 
     def test_pawn_move(self):
-        true_moves = ["a7 a6"]
+        true_moves = ["a2 a3"]
         false_move = None
         self.simulate_moves(true_moves, false_move)
 
     def test_blocked_move(self):
         true_moves = None
-        false_move = ["a1 a4"]
+        false_move = "a1 a4"
         self.simulate_moves(true_moves, false_move)
 
     def test_en_passant(self):
@@ -190,19 +187,14 @@ class TestPieces(unittest.TestCase):
         false_move = None
         self.simulate_moves(true_moves, false_move)
 
-    def test_pawn_diag_capture(self):
-        true_moves = ["e2 e4", "a7 a6", "e4 e5", "f7 f6", "e5" "f6"]
-        false_moves = None
-        self.simulate_moves(true_moves, false_moves)
-
     def test_pawn_diag_move(self):
         true_moves = ["e2 e4", "a7 a6", "e4 e5", "f7 f6"]
-        false_moves = ["e5" "d6"]
+        false_moves = "e5 d6"
         self.simulate_moves(true_moves, false_moves)
 
     def test_pawn_move_only(self):
         true_moves = ["e2 e4", "e7 e5"]
-        false_moves = ["e4 e5"]
+        false_moves = "e4 e5"
         self.simulate_moves(true_moves, false_moves)
 
     def test_knight_move_and_capture(self):
@@ -211,7 +203,24 @@ class TestPieces(unittest.TestCase):
         self.simulate_moves(true_moves, false_moves)
 
     def test_check(self):
-        pass
+        logging.debug("----test_check----")
+        chess = Chess()
+        moves = ["e2 e3", "f7 f6", "c2 c3", "g7 g5"]
+
+        for move in moves:
+            if DEBUG:
+                logging.debug("Testing move {}".format(move))
+
+            self.assertTrue(chess.validate_move(move))
+            chess.make_move(move)
+            chess.set_player_turn()
+
+        move = "d1 h5"
+        self.assertTrue(chess.validate_move(move))
+        chess.make_move(move)
+
+        chess.king_check_status()
+        self.assertTrue(chess.get_player(2).get_in_check())
 
 
 if __name__ == '__main__':
