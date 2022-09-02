@@ -23,6 +23,9 @@ class GameBoard:
     def set_castle(self, value):
         self._castle = value
 
+    def flip_board(self):
+        pass
+
     def get_location_format(self, col, row):
         return self._cols[col] + self._rows[row]
 
