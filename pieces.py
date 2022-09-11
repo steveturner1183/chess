@@ -1,53 +1,36 @@
 from copy import deepcopy
-import logging
+import pygame
+import os
 
 
 class PieceSet:
-    def __init__(self, p1_color):
+    def __init__(self):
         """
         Creates a roster for player 1 and 2 to use at the beginning of the game
-        :param p1_color: White or black piece color chosen. Determines positions
-        of King and Queen
         """
 
-        # Chess rule - Queen will always go on their own color
-        if p1_color == "W":
-            p2_color = "B"
-            k_loc = "e1", "e8"
-            q_loc = "d1", "d8"
-        else:
-            p2_color = "W"
-            k_loc = "d1", "d8"
-            q_loc = "e1", "e8"
+        self._roster = {
+                    "W":  [Rook("a1"), Knight("b1"), Bishop("c1"), Queen("d1"),
+                          King("e1"), Bishop("f1"), Knight("g1"), Rook("h1"),
+                          Pawn("a2"), Pawn("b2"), Pawn("c2"), Pawn("d2"),
+                          Pawn("e2"), Pawn("f2"), Pawn("g2"), Pawn("h2")],
 
-        self._p1_roster = [Rook("a1"), Knight("b1"), Bishop("c1"),
-                           Queen(q_loc[0]), King(k_loc[0]), Bishop("f1"),
-                           Knight("g1"), Rook("h1"), Pawn("a2"),
-                           Pawn("b2"), Pawn("c2"), Pawn("d2"), Pawn("e2"),
-                           Pawn("f2"), Pawn("g2"), Pawn("h2")]
+                    "B":  [Rook("a8"), Knight("b8"), Bishop("c8"), Queen("d8"),
+                           King("e8"), Bishop("f8"), Knight("g8"), Rook("h8"),
+                          Pawn("a7"), Pawn("b7"), Pawn("c7"), Pawn("d7"),
+                          Pawn("e7"), Pawn("f7"), Pawn("g7"), Pawn("h7")]
+        }
 
-        self._p2_roster = [Rook("a8"), Knight("b8"), Bishop("c8"),
-                           Queen(q_loc[1]), King(k_loc[1]), Bishop("f8"),
-                           Knight("g8"), Rook("h8"), Pawn("a7"),
-                           Pawn("b7"), Pawn("c7"), Pawn("d7"), Pawn("e7"),
-                           Pawn("f7"), Pawn("g7"), Pawn("h7")]
+    def get_roster(self, player):
+        player_turn = player.get_turn()
+        player_color = player.get_color()
+        roster = self._roster[player_color]
 
-        for piece in self._p1_roster:
-            piece.set_player(1)
-            piece.set_image_path(p1_color)
+        for piece in roster:
+            piece.set_player(player_turn)
+            piece.set_image_path(player_color)
 
-        for piece in self._p2_roster:
-            piece.set_player(2)
-            piece.set_image_path(p2_color)
-
-    def get_piece_sets(self):
-        return self._p1_roster, self._p2_roster
-
-    def get_king(self, player):
-        if player == 1:
-            return self._p1_roster[4]
-        else:
-            return self._p2_roster[4]
+        return roster
 
 
 class GamePiece:
@@ -56,29 +39,36 @@ class GamePiece:
         self._player = None
         self._name = None
         self._cur_loc = location
-        self._rows = "12345678"
-        self._cols = "abcdefgh"
         self._directions = {"N": (0, 1), "NE": (1, 1), "E": (1, 0),
                             "SE": (1, -1), "S": (0, -1), "SW": (-1, -1),
                             "W": (-1, 0), "NW": (-1, 1)}
         self._max_move = 7
         self._possible_moves = dict()
         self._move_set = []
-        self._piece_has_moved = False
+        self._has_moved = False
+        self._color = None
+        self._image_path = None
 
     def __repr__(self):
         return repr(
             "P" + str(self._player) + "-" + self._name + "-" + self._cur_loc)
 
     def set_image_path(self, color):
-        path = color + "_" + self._name + ".PNG"
+        """
+        Image files from:
+        https://commons.wikimedia.org/wiki/Category:PNG_chess_pieces/Standard_transparent
+        :param color:
+        :return:
+        """
+        self._color = color
+        path = os.path.join("Assets", color + "_" + self._name + ".PNG")
         self._image_path = path
 
     def set_has_moved(self):
         self._piece_has_moved = True
 
     def has_moved(self):
-        return self._piece_has_moved
+        return self._has_moved
 
     def get_image_path(self):
         return self._image_path
@@ -98,6 +88,9 @@ class GamePiece:
     def get_name(self):
         return self._name
 
+    def get_color(self):
+        return self._color
+
     def valid_move_only(self, target):
         if target is None:
             return True
@@ -110,14 +103,14 @@ class GamePiece:
                 return True
         return False
 
-    def get_possible_moves(self, board): ### REMOVE THIS FROM HERE AND EVERYWHERE ELSE :(
+    def get_possible_moves(self):
         return self._possible_moves
 
+### PIECES CAN JUMP OVER ENEMY PIECES
     def set_possible_moves(self, board):
         self._possible_moves.clear()
 
         for directional_move in self._move_set:
-
             path = []
             valid_move = True
             move_step = self._directions[directional_move]
@@ -127,8 +120,7 @@ class GamePiece:
             col += move_step[0]  # starting loc
             row += move_step[1]
 
-            while valid_move and col in range(8) and row in range(
-                    8) and move_count < self._max_move:
+            while valid_move and col in range(8) and row in range(8) and move_count < self._max_move:
                 target_loc = board.get_location_format(col, row)
                 target_piece = board.get_board_loc(target_loc)
 
@@ -146,6 +138,9 @@ class GamePiece:
                     self._possible_moves[target_loc] = deepcopy(path)
                 else:
                     valid_move = False
+
+                if self.valid_capture_only(target_piece):
+                    break
 
                 move_count += 1
                 col += move_step[0]  # starting loc
@@ -204,7 +199,7 @@ class Pawn(
         else:
             self._move_set = ["S", "SW", "SE"]
 
-    def made_first_move(self):  ### NEED TO CHANGE IN BOARD ###
+    def has_moved(self):
         self._max_move = 1
         self._first_move_made = True
 

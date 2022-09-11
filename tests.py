@@ -13,9 +13,9 @@ class TestPieces(unittest.TestCase):
         p2 = Player(2, "B")
         board = GameBoard(p1, p2)
         board._game_board = [[None] * 8 for i in range(8)]
-        board.set_board_loc("e5", piece)
+        board._game_board[4][4] = piece
         piece.set_possible_moves(board)
-        return piece.get_possible_moves(board)
+        return piece.get_possible_moves()
 
     def test_queen(self):
         queen = Queen("e5")
@@ -125,7 +125,7 @@ class TestPieces(unittest.TestCase):
 
     def test_pawn_second_move(self):
         pawn = Pawn("e5")
-        pawn.made_first_move()
+        pawn.has_moved()
         actual = self.empty_board_test(pawn)
 
         expected = {
@@ -218,8 +218,6 @@ class TestPieces(unittest.TestCase):
         move = "d1 h5"
         self.assertTrue(chess.validate_move(move))
         chess.make_move(move)
-
-        chess.king_check_status()
         self.assertTrue(chess.get_player(2).get_in_check())
 
 

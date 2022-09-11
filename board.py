@@ -1,8 +1,6 @@
 from pieces import *
 from player import Player
 from rules import ChessRules
-import logging
-logging.basicConfig(level=logging.DEBUG)
 from typing import Union
 
 
@@ -20,11 +18,17 @@ class GameBoard:
         self._en_passant = False
         self._castle = False
 
+    def get_board(self):
+        return self._game_board
+
+    def get_cols_and_rows(self):
+        return self._cols, self._rows
+
     def set_castle(self, value):
         self._castle = value
 
-    def flip_board(self):
-        pass
+    def set_en_passant(self, value):
+        self._en_passant = value
 
     def get_location_format(self, col, row):
         return self._cols[col] + self._rows[row]
@@ -47,15 +51,44 @@ class GameBoard:
         col, row = self.get_board_col_row(loc)
         return self._game_board[row][col]
 
-    def set_board_loc(self, loc, value):
+    def move_board_piece(self, cur_loc, tar_loc):
         """
         Sets the given board location to a new value
         :param loc: Chess coordinate location, example "a1"
         :param value: Piece or None if space is to be cleared
         :return: None
         """
+        cur_col, cur_row = self.get_board_col_row(cur_loc)
+        tar_col, tar_row = self.get_board_col_row(tar_loc)
+        cur_piece = self.get_board_loc(cur_loc)
+
+        self._game_board[tar_row][tar_col] = cur_piece
+        cur_piece.set_location(tar_loc)
+        self._game_board[cur_row][cur_col] = None
+
+        if cur_piece.get_name() in ["King", "Rook", "Pawn"]:
+            cur_piece.set_has_moved()
+
+    def remove_captured_piece(self, loc):
+        piece = self.get_board_loc(loc)
+        if piece.get_player() == 1:
+            self._p1.remove_piece(piece)
+        else:
+            self._p2.remove_piece(piece)
+
+        # Remove captured piece from board
         col, row = self.get_board_col_row(loc)
-        self._game_board[row][col] = value
+        self._game_board[row][col] = None
+
+    def get_neighbor_loc(self, cur_loc, col_dist, row_dist):
+        cur_col, cur_row = self.get_board_col_row(cur_loc)
+        cur_col += col_dist
+        cur_row += row_dist
+        if cur_col in range(8) and cur_row in range(8):
+            tar_loc = self._cols[cur_col] + self._rows[cur_row]
+            return tar_loc
+        else:
+            return None
 
     def set_up_board(self):
         """
@@ -63,17 +96,9 @@ class GameBoard:
         :return: None
         """
         # generate set of pieces based on player 1 color
-        piece_set = PieceSet(self._p1.get_color())
-        rosters = piece_set.get_piece_sets()
-
-        # Distribute pieces to players
-        self._p1.set_roster(rosters[0])
-        self._p2.set_roster(rosters[1])
-
-        # Track king for location checking
-        self._p1.set_king(piece_set.get_king(1))
-        self._p2.set_king(piece_set.get_king(2))
-
+        piece_set = PieceSet()
+        self._p1.set_roster(piece_set.get_roster(self._p1))
+        self._p2.set_roster(piece_set.get_roster(self._p2))
 
         self._game_board = [
             [piece for piece in self._p1.get_roster()[:8]],
@@ -83,7 +108,16 @@ class GameBoard:
             [piece for piece in self._p2.get_roster()[:8]]
         ]
 
+        if self._p1.get_color() == "B":
+            self.reverse_board()
+
         self.set_all_possible_moves()
+
+    def reverse_board(self):
+        for row in self._game_board:
+            row.reverse()
+        self._cols = self._cols[::-1]
+        self._rows = self._rows[::-1]
 
     def set_all_possible_moves(self):
         for row in self._game_board:
@@ -91,8 +125,23 @@ class GameBoard:
                 if piece is not None:
                     piece.set_possible_moves(self)
 
-    #### King can move into Ccheck!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    def move_piece(self, cur_loc, tar_loc):
+    def castle_move(self, tar_loc):
+
+        self.set_castle(False)
+        rook_locs = {
+            "g1": {"MOVE": "f1", "LOC": "h1"},
+            "c1": {"MOVE": "d1", "LOC": "a1"},
+            "g8": {"MOVE": "f8", "LOC": "h8"},
+            "c8": {"MOVE": "d8", "LOC": "a8"}
+        }
+
+        rook_loc = rook_locs[tar_loc]["LOC"]
+        rook_move = rook_locs[tar_loc]["MOVE"]
+
+        self.get_board_loc(rook_loc).set_location(rook_move)
+        self.move_board_piece(rook_loc, rook_move)
+
+    def make_move(self, cur_loc, tar_loc):
         """
         Change the board to match a verified move
         :param cur_loc: Location of piece to be moved on board
@@ -101,69 +150,42 @@ class GameBoard:
         """
         # Move pieces on board
         cur_piece = self.get_board_loc(cur_loc)
-        tar_piece = self.get_board_loc(tar_loc)
 
         # Special moving sequence for en passant
         if self._en_passant is True:
-            cap_loc = self.get_board_loc(cur_loc).get_en_passant_capture()
+            self._en_passant = False
+            cap_loc = cur_piece.get_en_passant_moves()["Capture"]
+            tar_piece = self.get_board_loc(cap_loc)
+        else:
+            cap_loc = tar_loc
             tar_piece = self.get_board_loc(cap_loc)
 
-            self.set_board_loc(cap_loc, None)
-            self._en_passant = False
-
         if self._castle is True:
-            self.set_castle(False)
-            cur_row = self.get_board_col_row(cur_loc)[1]
-            cur_col, tar_col = self._cols.index(cur_loc[0]), self._cols.index(tar_loc[0])
-
-            logging.debug("cur col = {} and tar col = {}".format(cur_col, tar_col))
-            if cur_col > tar_col:  # Move left
-                rook_direction = 1
-                if cur_piece.get_player() == 1:
-                    rook_cur_loc = "a1"
-                else:
-                    rook_cur_loc = "a8"
-
-            else:
-                rook_direction = -1
-                if cur_piece.get_player() == 1:
-                    rook_cur_loc = "h1"
-                else:
-                    rook_cur_loc = "h8"
-
-            rook = self.get_board_loc(rook_cur_loc)
-            rook_col = tar_col + rook_direction
-            logging.debug("rook col = {}".format(rook_col))
-            rook_loc = self.get_location_format(rook_col, cur_row)
-            logging.debug("setting rook at {} to {}".format(rook_cur_loc, rook_loc))
-            self.set_board_loc(rook_loc, rook)
-            self.set_board_loc(rook_cur_loc, None)
-            rook.set_location(rook_loc)
+            self.castle_move(tar_loc)
 
         # Remove captured piece from opposing players roster
         if tar_piece is not None:
-            if cur_piece.get_player() == 1:
-                self._p2.remove_piece(tar_piece)
-            else:
-                self._p1.remove_piece(tar_piece)
+            self.remove_captured_piece(cap_loc)
 
         # Move piece to new location
-        cur_piece.set_location(tar_loc)
-        self.set_board_loc(tar_loc, cur_piece)
-        self.set_board_loc(cur_loc, None)
+        self.move_board_piece(cur_loc, tar_loc)
 
-        if cur_piece is not None and cur_piece.get_name() == "Pawn":
-            # Chess rule - Pawn can only move two spaces on first move
-            cur_piece.made_first_move()
+        # Must be reset every turn
+        self.reset_en_passant()
 
-            # Chess rule - If piece moved 2 spaces, other pawns can en passant
-            self._rules.check_en_passant(cur_piece, cur_loc, tar_loc, self._game_board)
+        self._rules.en_passant(cur_piece, cur_loc, tar_loc, self)
 
-        if cur_piece.get_name() == "Rook" or cur_piece.get_name() == "King":
-            cur_piece.set_has_moved()
         # reset board after moved piece
         self.set_all_possible_moves()
 
+    def reset_en_passant(self):
+        # Reset en passant
+        self._en_passant = False
+
+        for row in self._game_board:
+            for piece in row:
+                if piece is not None and piece.get_name() == "Pawn":
+                    piece.clear_en_passant()
 
     def print_board(self):
         print("      a     b     c      d     e     f     g      h ")
@@ -176,15 +198,15 @@ class GameBoard:
             for piece in rows:
                 if piece is not None:
                     print(
-                        "[" + piece.get_name()[:2] + " " + str(piece.get_player()) + "]", end=" ")
+                        "[" + piece.get_name()[:2] + " " +
+                        str(piece.get_player()) + piece.get_color() + " " +
+                        piece.get_location() + " " + "]", end=" ")
                 else:
-                    print("  X   ", end=" ")
+                    print("-----X-----", end=" ")
             print("\n")
 
 
 if __name__ == "__main__":
-    p1 = Player("Human", "W")
-    p2 = Player("Humam", "B")
+    p1 = Player("Human", "B")
+    p2 = Player("Humam", "W")
     board = GameBoard(p1, p2)
-    board.print_board()
-    # print(board.king_check("player_1"))
