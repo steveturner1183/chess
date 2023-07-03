@@ -1,7 +1,6 @@
 from pieces import *
 from player import Player
 from rules import ChessRules
-from typing import Union
 
 
 class GameBoard:
@@ -54,8 +53,8 @@ class GameBoard:
     def move_board_piece(self, cur_loc, tar_loc):
         """
         Sets the given board location to a new value
-        :param loc: Chess coordinate location, example "a1"
-        :param value: Piece or None if space is to be cleared
+        :param cur_loc: Chess coordinate location, example "a1"
+        :param tar_loc: Piece or None if space is to be cleared
         :return: None
         """
         cur_col, cur_row = self.get_board_col_row(cur_loc)

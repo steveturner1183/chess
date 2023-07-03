@@ -24,7 +24,7 @@ class ChessInterface:
         self._font = pg.font.SysFont("Comic Sans MS", 30)
 
         # Colors
-        self._color_main_bg = (49, 46, 43)
+        self._color_main_bg = (211, 211, 211)
         self._color_dark_tile = (118, 150, 86)
         self._color_light_tile = (238, 238, 210)
         self._color_menu = "gray"
@@ -67,7 +67,7 @@ class ChessInterface:
         bg = pg.image.load(os.path.join("Assets", "Start_Background.PNG"))
         self._image_bg = pg.transform.scale(bg, scale)
 
-# ADD DRAW
+
     def run_game(self):
         run = True
         clock = pg.time.Clock()

@@ -103,6 +103,15 @@ class GamePiece:
                 return True
         return False
 
+    def valid_move(self, target, move):
+        if target is not None:
+            if target.get_player() != self._player:
+                return True
+            else:
+                return False
+        else:
+            return True
+
     def get_possible_moves(self):
         return self._possible_moves
 
@@ -124,16 +133,9 @@ class GamePiece:
                 target_loc = board.get_location_format(col, row)
                 target_piece = board.get_board_loc(target_loc)
 
-                if self._name == "Pawn":
-                    if directional_move == "N" or directional_move == "S":
-                        move_check = self.valid_move_only(target_piece)
-                    else:
-                        move_check = self.valid_capture_only(target_piece)
-                else:
-                    move_check = self.valid_move_only(
-                        target_piece) or self.valid_capture_only(target_piece)
+                move_is_valid = self.valid_move(target_piece, directional_move)
 
-                if move_check:
+                if move_is_valid:
                     path.append(target_loc)
                     self._possible_moves[target_loc] = deepcopy(path)
                 else:
@@ -164,8 +166,7 @@ class King(GamePiece):
         self._max_move = 1
 
 
-class Pawn(
-    GamePiece):  ### Need capture move and en passant  ## need transformation
+class Pawn(GamePiece):  ### Need capture move and en passant  ## need transformation
     def __init__(self, location):
         super().__init__(location)
         self._name = "Pawn"
@@ -174,6 +175,18 @@ class Pawn(
         self._move_set = []
         self._en_passant = False
         self._en_passant_locs = {"Capture": None, "Move": None}
+
+    def valid_move(self, target, move):
+        if move == "N" or move == "S":
+            if target is None:
+                return True
+            else:
+                return False
+        else:
+            if target is not None:
+                if target.get_player() != self._player:
+                    return True
+            return False
 
     def set_en_passant(self, capture_loc, move_loc):
         self._en_passant = True

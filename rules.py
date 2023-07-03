@@ -51,8 +51,6 @@ class ChessRules:
 
             if def_king_loc in opp_moves:
                 def_player_in_check = "CHECK"
-                print(opp_piece)
-                print(opp_moves)
                 if self.checkmate(oppenent, defending_player,
                                   opp_moves[def_king_loc], opp_piece):
                     def_player_in_check = "CHECKMATE"
@@ -287,10 +285,6 @@ class ChessRules:
 
         if self.check(atk_player, def_player) is not False:
             return False
-        else:
-            print("Player turn", new_game.get_player_turn())
-            print("atk_player", atk_player)
-            print(self.check(atk_player, def_player))
 
     #####################################################################
     # Draw after 3 identical moves

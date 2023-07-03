@@ -1,8 +1,7 @@
-import logging
 from board import GameBoard
 from player import *
 from rules import ChessRules
-logging.basicConfig(level=logging.DEBUG)
+
 
 # player cannot move other piece if they are in check
 # change tile colors!!!!!!!!
@@ -70,7 +69,7 @@ class Chess:
             def_player.set_in_check(status)
         elif status == "CHECKMATE":
             def_player.set_in_check(status)
-            self._game_status = "Player " + str(atk_player.get_turn()) + " Won!"
+            self._game_status = "Player " + str(atk_player.get_turn()) + " Wins"
         else:
             def_player.set_in_check(False)
 
@@ -120,7 +119,6 @@ class Chess:
 
         # Not players turn
         if cur_piece.get_player() != self._player_turn:  # Not player turn
-            logging.debug("Not players turn")
             return False
 
         # En passant
@@ -132,7 +130,6 @@ class Chess:
             opp_roster = self.get_opponent().get_roster()
 
             if self._rules.self_into_check(target_loc, opp_roster):
-                logging.debug("Cannot move self into check")
                 return False
 
             if self._rules.castle(current_loc, target_loc, self._board):
@@ -143,7 +140,6 @@ class Chess:
 
         # Move location is not in piece's move set
         if target_loc not in move_list:
-            logging.debug("{} not in {}".format(target_loc, move_list))
             return False
 
         current_player = self.get_player(self._player_turn)
