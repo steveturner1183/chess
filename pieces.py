@@ -1,5 +1,4 @@
 from copy import deepcopy
-import pygame
 import os
 
 
@@ -11,14 +10,14 @@ class PieceSet:
 
         self._roster = {
                     "W":  [Rook("a1"), Knight("b1"), Bishop("c1"), Queen("d1"),
-                          King("e1"), Bishop("f1"), Knight("g1"), Rook("h1"),
-                          Pawn("a2"), Pawn("b2"), Pawn("c2"), Pawn("d2"),
-                          Pawn("e2"), Pawn("f2"), Pawn("g2"), Pawn("h2")],
+                           King("e1"), Bishop("f1"), Knight("g1"), Rook("h1"),
+                           Pawn("a2"), Pawn("b2"), Pawn("c2"), Pawn("d2"),
+                           Pawn("e2"), Pawn("f2"), Pawn("g2"), Pawn("h2")],
 
                     "B":  [Rook("a8"), Knight("b8"), Bishop("c8"), Queen("d8"),
                            King("e8"), Bishop("f8"), Knight("g8"), Rook("h8"),
-                          Pawn("a7"), Pawn("b7"), Pawn("c7"), Pawn("d7"),
-                          Pawn("e7"), Pawn("f7"), Pawn("g7"), Pawn("h7")]
+                           Pawn("a7"), Pawn("b7"), Pawn("c7"), Pawn("d7"),
+                           Pawn("e7"), Pawn("f7"), Pawn("g7"), Pawn("h7")]
         }
 
     def get_roster(self, player):
@@ -39,9 +38,6 @@ class GamePiece:
         self._player = None
         self._name = None
         self._cur_loc = location
-        self._directions = {"N": (0, 1), "NE": (1, 1), "E": (1, 0),
-                            "SE": (1, -1), "S": (0, -1), "SW": (-1, -1),
-                            "W": (-1, 0), "NW": (-1, 1)}
         self._max_move = 7
         self._possible_moves = dict()
         self._move_set = []
@@ -91,18 +87,6 @@ class GamePiece:
     def get_color(self):
         return self._color
 
-    def valid_move_only(self, target):
-        if target is None:
-            return True
-        else:
-            return False
-
-    def valid_capture_only(self, target):
-        if target is not None:
-            if target.get_player() != self._player:
-                return True
-        return False
-
     def valid_move(self, target, move):
         if target is not None:
             if target.get_player() != self._player:
@@ -119,34 +103,43 @@ class GamePiece:
     def set_possible_moves(self, board):
         self._possible_moves.clear()
 
-        for directional_move in self._move_set:
+        for move in self._move_set:
             path = []
             valid_move = True
-            move_step = self._directions[directional_move]
+            capture_found = False
             move_count = 0
 
             col, row = board.get_board_col_row(self._cur_loc)
-            col += move_step[0]  # starting loc
-            row += move_step[1]
+            col += move[0]  # starting loc
+            row += move[1]
 
-            while valid_move and col in range(8) and row in range(8) and move_count < self._max_move:
-                target_loc = board.get_location_format(col, row)
-                target_piece = board.get_board_loc(target_loc)
-
-                move_is_valid = self.valid_move(target_piece, directional_move)
-
-                if move_is_valid:
-                    path.append(target_loc)
-                    self._possible_moves[target_loc] = deepcopy(path)
-                else:
+            while valid_move is True and capture_found is False:
+                # Move is of board
+                if col not in range(8) or row not in range(8):
                     valid_move = False
 
-                if self.valid_capture_only(target_piece):
-                    break
+                # Piece's moves exceeded
+                elif move_count >= self._max_move:
+                    valid_move = False
+
+                else:
+                    target_loc = board.get_location_format(col, row)
+                    target_piece = board.get_board_loc(target_loc)
+
+                    move_is_valid = self.valid_move(target_piece, move)
+
+                    if move_is_valid:
+                        path.append(target_loc)
+                        self._possible_moves[target_loc] = deepcopy(path)
+                    else:
+                        valid_move = False
+
+                    if target_piece is not None:
+                        capture_found = True
 
                 move_count += 1
-                col += move_step[0]  # starting loc
-                row += move_step[1]
+                col += move[0]  # starting loc
+                row += move[1]
 
         return self._possible_moves
 
@@ -155,14 +148,15 @@ class Queen(GamePiece):
     def __init__(self, location):
         super().__init__(location)
         self._name = "Queen"
-        self._move_set = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
-
+        self._move_set = [(0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1),
+                          (-1, 0), (-1, 1)]
 
 class King(GamePiece):
     def __init__(self, location):
         super().__init__(location)
         self._name = "King"
-        self._move_set = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+        self._move_set = [(0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1),
+                          (-1, 0), (-1, 1)]
         self._max_move = 1
 
 
@@ -177,7 +171,7 @@ class Pawn(GamePiece):  ### Need capture move and en passant  ## need transforma
         self._en_passant_locs = {"Capture": None, "Move": None}
 
     def valid_move(self, target, move):
-        if move == "N" or move == "S":
+        if move == (0, 1) or move == (0, -1):
             if target is None:
                 return True
             else:
@@ -208,9 +202,9 @@ class Pawn(GamePiece):  ### Need capture move and en passant  ## need transforma
         self._player = player
 
         if self._player == 1:
-            self._move_set = ["N", "NW", "NE"]
+            self._move_set = [(0, 1), (-1, 1), (1, 1)]
         else:
-            self._move_set = ["S", "SW", "SE"]
+            self._move_set = [(0, -1), (-1, -1), (1, -1)]
 
     def has_moved(self):
         self._max_move = 1
@@ -220,10 +214,8 @@ class Pawn(GamePiece):  ### Need capture move and en passant  ## need transforma
 class Knight(GamePiece):
     def __init__(self, location):
         super().__init__(location)
-        self._directions = {"NE": (1, 2), "EN": (2, 1), "ES": (2, -1),
-                            "SE": (1, -2), "SW": (-1, -2), "WS": (-2, -1),
-                            "WN": (-2, 1), "NW": (-1, 2)}
-        self._move_set = ["NE", "EN", "ES", "SE", "SW", "WS", "WN", "NW"]
+        self._move_set = [(1, 2), (2, 1), (2, -1), (1, -2), (-1, -2), (-2, -1),
+                          (-2, 1), (-1, 2)]
         self._max_move = 1
         self._name = "Knight"
 
@@ -232,11 +224,11 @@ class Rook(GamePiece):
     def __init__(self, location):
         super().__init__(location)
         self._name = "Rook"
-        self._move_set = ["N", "E", "S", "W"]
+        self._move_set = [(0, 1), (1, 0), (0, -1), (-1, 0)]
 
 
 class Bishop(GamePiece):
     def __init__(self, location):
         super().__init__(location)
         self._name = "Bishop"
-        self._move_set = ["NE", "SE", "SW", "NW"]
+        self._move_set = [(1, 1), (1, -1), (-1, -1), (-1, 1)]

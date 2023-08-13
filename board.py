@@ -32,7 +32,7 @@ class GameBoard:
     def get_location_format(self, col, row):
         return self._cols[col] + self._rows[row]
 
-    def get_board_col_row(self, loc: str) -> (int, int):
+    def get_board_col_row(self, loc):
         """
         Returns board grid coordinates for given location
         :param loc: Chess coordinate location, example "a1"
@@ -41,7 +41,7 @@ class GameBoard:
         col, row = loc[0], loc[1]
         return self._cols.index(col), self._rows.index(row)
 
-    def get_board_loc(self, loc: str):
+    def get_board_loc(self, loc):
         """
         Retrieves value at given board location
         :param loc: Chess coordinate location, example "a1"
@@ -185,24 +185,6 @@ class GameBoard:
             for piece in row:
                 if piece is not None and piece.get_name() == "Pawn":
                     piece.clear_en_passant()
-
-    def print_board(self):
-        print("      a     b     c      d     e     f     g      h ")
-        print("   -----------------------------------------------")
-        count = 8
-        print_board = [self._game_board[row] for row in range(7, -1, -1)]
-        for rows in print_board:
-            print(count, end=" | ")
-            count -= 1
-            for piece in rows:
-                if piece is not None:
-                    print(
-                        "[" + piece.get_name()[:2] + " " +
-                        str(piece.get_player()) + piece.get_color() + " " +
-                        piece.get_location() + " " + "]", end=" ")
-                else:
-                    print("-----X-----", end=" ")
-            print("\n")
 
 
 if __name__ == "__main__":
