@@ -151,6 +151,7 @@ class Queen(GamePiece):
         self._move_set = [(0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1),
                           (-1, 0), (-1, 1)]
 
+
 class King(GamePiece):
     def __init__(self, location):
         super().__init__(location)

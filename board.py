@@ -1,5 +1,4 @@
 from pieces import *
-from player import Player
 from rules import ChessRules
 
 
@@ -69,6 +68,11 @@ class GameBoard:
             cur_piece.set_has_moved()
 
     def remove_captured_piece(self, loc):
+        """
+        Removes captured piece from board and players roster
+        :param loc: location of piece to remove
+        :return: None
+        """
         piece = self.get_board_loc(loc)
         if piece.get_player() == 1:
             self._p1.remove_piece(piece)
@@ -79,7 +83,16 @@ class GameBoard:
         col, row = self.get_board_col_row(loc)
         self._game_board[row][col] = None
 
+        return
+
     def get_neighbor_loc(self, cur_loc, col_dist, row_dist):
+        """
+        Get neighbor location of piece; used for en passant
+        :param cur_loc: location of piece
+        :param col_dist: col distance from current piece to neighbor
+        :param row_dist: row distance from current piece to neighbor
+        :return: neighbor or none
+        """
         cur_col, cur_row = self.get_board_col_row(cur_loc)
         cur_col += col_dist
         cur_row += row_dist
@@ -113,19 +126,31 @@ class GameBoard:
         self.set_all_possible_moves()
 
     def reverse_board(self):
+        """
+        Reverse board, used for interface
+        :return: None
+        """
         for row in self._game_board:
             row.reverse()
         self._cols = self._cols[::-1]
         self._rows = self._rows[::-1]
 
     def set_all_possible_moves(self):
+        """
+        Set all possible moves for a given piece
+        :return: None
+        """
         for row in self._game_board:
             for piece in row:
                 if piece is not None:
                     piece.set_possible_moves(self)
 
     def castle_move(self, tar_loc):
-
+        """
+        Moves pieces when a castle is performed
+        :param tar_loc: target location
+        :return: none
+        """
         self.set_castle(False)
         rook_locs = {
             "g1": {"MOVE": "f1", "LOC": "h1"},
@@ -185,9 +210,3 @@ class GameBoard:
             for piece in row:
                 if piece is not None and piece.get_name() == "Pawn":
                     piece.clear_en_passant()
-
-
-if __name__ == "__main__":
-    p1 = Player("Human", "B")
-    p2 = Player("Humam", "W")
-    board = GameBoard(p1, p2)
