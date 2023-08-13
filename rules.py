@@ -1,5 +1,6 @@
 from pieces import *
-
+import logging
+from copy import deepcopy
 
 ###########################################################
 # Chess Rules
@@ -26,28 +27,8 @@ from pieces import *
 # First word is capitalized
 ###########################################################
 
+
 class ChessRules:
-    def __init__(self):
-        self._cols = "abcdefgh"
-        self._rows = "12345678"
-
-    def _get_board_col_row(self, loc: str) -> (int, int):
-        """
-        Returns board grid coordinates for given location
-        :param loc: Chess coordinate location, example "a1"
-        :return: Grid coordinates for given location
-        """
-        col, row = loc[0], loc[1]
-        return self._cols.index(col), self._rows.index(row)
-
-    def _get_board_loc(self, loc: str, board):
-        """
-        Retrieves value at given board location
-        :param loc: Chess coordinate location, example "a1"
-        :return: Piece if piece at given location, otherwise None
-        """
-        col, row = self._get_board_col_row(loc)
-        return board[row][col]
 
     #####################################################################
     # Check
@@ -56,28 +37,23 @@ class ChessRules:
     #
     #
     #####################################################################
-##@@#@#@ WHAT IF A PIECE MOVES OUT OF THE WAY AND PIECE PUT INT CHECK??????!!!!!!!!!!!!!!!!!!!!!!!
-    def check(self, attacking_player, defending_player, board, chess):
+
+    def check(self, oppenent, defending_player):
         def_player_in_check = False
 
         def_king = defending_player.get_king()
         def_king_loc = def_king.get_location()
-        atk_roster = attacking_player.get_roster()
+        opp_roster = oppenent.get_roster()
 
         # See if any pieces in oppenents roster can capture King
-        for atk_piece in atk_roster:
-            atk_moves = atk_piece.get_possible_moves(board)
+        for opp_piece in opp_roster:
+            opp_moves = opp_piece.get_possible_moves()
 
-            if def_king_loc in atk_moves:
-                in_check = chess.validate_move(atk_piece.get_location() + " " +
-                                               def_king_loc)
-                if in_check:
-                    def_player_in_check = "CHECK"
-                    if self.checkmate(attacking_player, defending_player,
-                                           atk_moves[def_king_loc], atk_piece,
-                                           board, chess):
-                        def_player_in_check = "CHECKMATE"
-        logging.debug("Check status = {}".format(def_player_in_check))
+            if def_king_loc in opp_moves:
+                def_player_in_check = "CHECK"
+                if self.checkmate(oppenent, defending_player,
+                                  opp_moves[def_king_loc], opp_piece):
+                    def_player_in_check = "CHECKMATE"
         return def_player_in_check
 
     #####################################################################
@@ -89,7 +65,7 @@ class ChessRules:
     #####################################################################
 
     def checkmate(self, attacking_player, defending_player, attack_moves,
-                   attack_piece, board, chess):
+                   attack_piece):
         """
         Checks to see if opponents piece is in checkmate, i.e see if there are
         any ways to get out of check
@@ -106,12 +82,12 @@ class ChessRules:
 
         for atk_move in attack_moves:  ########## SWAP AND just check if piece move is in attack moves???????????????????????????????????????????????
             for piece in def_roster:
-                piece_moves = piece.get_possible_moves(board)  ######### PAWN !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                piece_moves = piece.get_possible_moves()  ######### PAWN !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
                 if piece.get_name() == "King":
                     for move in piece_moves:
                         self_in_check = self.self_into_check(move,
-                                                             attacking_player.get_roster(), board)  ####### this validation already needs to occur elseware !!!!!!!!!!!!!!!!!
+                                                             attacking_player.get_roster())  ####### this validation already needs to occur elseware !!!!!!!!!!!!!!!!!
 
                         if self_in_check is False:
                             #  2. King captures attacking piece
@@ -137,15 +113,13 @@ class ChessRules:
     #
     #
     #####################################################################
-    def self_into_check(self, king_move, opp_roster, board):
+    def self_into_check(self, king_move, opp_roster):
 
         for piece in opp_roster:
-            if piece.get_name() != "Pawn":
-                all_moves = piece.get_possible_moves(board)
-                if king_move in all_moves:
-                    return True
+            all_moves = piece.get_possible_moves()
+            if king_move in all_moves:
+                return True
 
-            ## ADDD PAWNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
         return False
 
     #####################################################################
@@ -156,40 +130,40 @@ class ChessRules:
     #
     #####################################################################
 
-    def check_en_passant(self, pawn, start_loc, end_loc, board):
+    def en_passant(self, pawn, start_loc, end_loc, board):
         """
         Checks if given pawn can be captured from en passant, and sets the
         capturing pieces available moves to include en passant if true
         :param pawn:
         :return:
         """
-        for row in board:
-            for piece in row:
-                if piece is not None and piece.get_name() == "Pawn":
-                    piece.clear_en_passant()
-
-        # Only Pawn that moves 2 spaces is eligable
-        spaces_moved = abs(
-            self._rows.index(start_loc[1]) - self._rows.index(end_loc[1]))
-        if spaces_moved != 2:
+        if pawn.get_name() != "Pawn":
             return
 
         cur_loc = pawn.get_location()
-        cur_col, cur_row = self._get_board_col_row(cur_loc)
+        rows = board.get_cols_and_rows()[1]
+
+        # Only Pawn that moves 2 spaces is eligible
+        move_start = rows.index(start_loc[1])
+        move_end = rows.index(end_loc[1])
+        eligible_move = abs(move_start - move_end) == 2
+
+        if not eligible_move:
+            return
 
         # Check east and west neighbor to see if they can perform en passant next turn
         for direction in 1, -1:
-            neighbor_col = cur_col + direction
-            board_boundary = range(8)
+            neighbor_loc = board.get_neighbor_loc(cur_loc, direction, 0)
 
-            if neighbor_col in board_boundary:
-                neighbor = self._get_board_loc(self._cols[neighbor_col] + cur_loc[1], board)
+            if neighbor_loc is not None:
+                neighbor = board.get_board_loc(neighbor_loc)
 
                 if neighbor is not None and neighbor.get_name() == "Pawn":
-                    if neighbor.get_player() == 1:  # Move north of target pawn
-                        en_move = cur_loc[0] + self._rows[cur_row + 1]
+
+                    if neighbor.get_color() == "W":  # Move north of target pawn
+                        en_move = board.get_neighbor_loc(cur_loc, 0, 1)
                     else:  # Move south
-                        en_move = cur_loc[0] + self._rows[cur_row - 1]
+                        en_move = board.get_neighbor_loc(cur_loc, 0, -1)
 
                     neighbor.set_en_passant(cur_loc, en_move)
 
@@ -254,7 +228,6 @@ class ChessRules:
             direction = 1
             rook_col = 7
         else:
-            logging.debug("Move attempt too long: {}".format(col_move))
             return False
 
         rook_loc = board.get_location_format(rook_col, cur_row)
@@ -264,17 +237,10 @@ class ChessRules:
             piece_loc = board.get_location_format(col, cur_row)
             piece = board.get_board_loc(piece_loc)
             if piece is not None:
-                logging.debug("Castle Path Blocked by {} at {}".format(
-                  piece.get_name(), piece.get_location()
-                ))
                 return False
 
-
         if king.has_moved() or rook.has_moved():
-            logging.debug("King or rook has moved")
             return False
-
-        # ADD DIRECTIONAL MOVE TO BOARD
 
         return True
 
@@ -297,6 +263,28 @@ class ChessRules:
                     if len(move_set) != 0:
                         return False
         return True
+
+    #####################################################################
+    # Player is still in check after move
+    #
+    # Rule description:
+    #
+    #
+    #####################################################################
+
+    def still_in_check(self, move, game):
+        new_game = deepcopy(game)
+        new_game.make_move(move)
+
+        if new_game.get_player_turn() == 1:
+            atk_player = new_game.get_player(2)
+            def_player = new_game.get_player(1)
+        else:
+            atk_player = new_game.get_player(1)
+            def_player = new_game.get_player(2)
+
+        if self.check(atk_player, def_player) is not False:
+            return False
 
     #####################################################################
     # Draw after 3 identical moves
