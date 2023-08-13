@@ -1,10 +1,9 @@
 import unittest
-from pieces import *
+from player import Player
 from board import *
 from chess import Chess
 import logging
 logging.basicConfig(level=logging.DEBUG)
-import inspect
 
 DEBUG = False
 
@@ -296,7 +295,7 @@ class TestPieces(unittest.TestCase):
             # King movement
             "d4 d5"  # King capture
         ]
-        false_moves = None  # "d7 d6"  # Cannot move self into check ##########################################
+        false_moves = None  # "d7 d6"  # Cannot move self into check
         self.simulate_moves(true_moves, false_moves, False)
     """
 
@@ -375,14 +374,14 @@ class TestPieces(unittest.TestCase):
         true_moves = [
             "d2 d4", "e7 e5", "c1 d2", "f8 b4"
         ]
-        false_moves = None  # "d2 e3"###################################################
+        false_moves = "d2 e3"
         self.simulate_moves(true_moves, false_moves, False)
 
     def test_staying_in_check(self):
         true_moves = [
             "d2 d4", "e7 e5", "f2 f3", "f8 b4"
         ]
-        false_moves = None  # "f3 f4"####################################
+        false_moves = "f3 f4"
         self.simulate_moves(true_moves, false_moves, False)
 
 

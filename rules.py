@@ -15,16 +15,7 @@ from copy import deepcopy
 # Castle
 # Draw
 # 3 move draw
-#
-# Piece responsible for analyzing board state
-# Look at moves when king is in check
-# !!!!!!!!!!!!!!!!!!! Should he entire baord just be reversed
-# when first player is black
-# Relativity!
-# Start adding try and except clauses
-# Function - should only do one thing, 10 lines of code try, no more than one level of indentation, less paragraph breaks
-# Single leading undescore for class use only
-# First word is capitalized
+
 ###########################################################
 
 
@@ -33,7 +24,7 @@ class ChessRules:
     #####################################################################
     # Check
     #
-    # Rule description:
+    # Rule description: King can be captured next turn
     #
     #
     #####################################################################
@@ -59,7 +50,7 @@ class ChessRules:
     #####################################################################
     # Checkmate
     #
-    # Rule description:
+    # Rule description: King will be captured next turn
     #
     #
     #####################################################################
@@ -80,14 +71,14 @@ class ChessRules:
         """
         def_roster = defending_player.get_roster()
 
-        for atk_move in attack_moves:  ########## SWAP AND just check if piece move is in attack moves???????????????????????????????????????????????
+        for atk_move in attack_moves:
             for piece in def_roster:
-                piece_moves = piece.get_possible_moves()  ######### PAWN !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                piece_moves = piece.get_possible_moves()
 
                 if piece.get_name() == "King":
                     for move in piece_moves:
                         self_in_check = self.self_into_check(move,
-                                                             attacking_player.get_roster())  ####### this validation already needs to occur elseware !!!!!!!!!!!!!!!!!
+                                                             attacking_player.get_roster())
 
                         if self_in_check is False:
                             #  2. King captures attacking piece
@@ -109,7 +100,7 @@ class ChessRules:
     #####################################################################
     # Self into check
     #
-    # Rule description:
+    # Rule description: King cannot move themselves into check
     #
     #
     #####################################################################
@@ -125,7 +116,7 @@ class ChessRules:
     #####################################################################
     # En passant
     #
-    # Rule description:
+    # Rule description: Special capture sequence for pawn
     #
     #
     #####################################################################
@@ -167,11 +158,10 @@ class ChessRules:
 
                     neighbor.set_en_passant(cur_loc, en_move)
 
-    # SET THIS IN BOARD
     #####################################################################
     # Pawn Transformation
     #
-    # Rule description:
+    # Rule description: Pawn transforms at end of board
     #
     #
     #####################################################################
@@ -194,22 +184,14 @@ class ChessRules:
 
         return transform
 
-    # add board functions for castling and attributes for if baord castled
-    # add tracker to see if piece has moved
     #####################################################################
     # Castle
     #
-    # Rule description:
+    # Rule description: Special move sequence for king and roko
     #
     #
     #####################################################################
     def castle(self, cur_loc, tar_loc, board):
-        # Has the king moved?
-        # Has the rook moved?
-        # What direction?
-        # Is the path clear? king put in check on travel to path?
-        # do not think you can castle out of check???
-
         king = board.get_board_loc(cur_loc)
 
         cur_col, cur_row = board.get_board_col_row(cur_loc)
@@ -247,7 +229,7 @@ class ChessRules:
     #####################################################################
     # Draw
     #
-    # Rule description:
+    # Rule description: Player cannot make any moves
     #
     #
     #####################################################################
@@ -267,7 +249,7 @@ class ChessRules:
     #####################################################################
     # Player is still in check after move
     #
-    # Rule description:
+    # Rule description: Can only move out of check when in check
     #
     #
     #####################################################################
@@ -285,13 +267,3 @@ class ChessRules:
 
         if self.check(atk_player, def_player) is not False:
             return False
-
-    #####################################################################
-    # Draw after 3 identical moves
-    #
-    # Rule description:
-    #
-    #
-    #####################################################################
-    def draw_3_moves(self):
-        pass

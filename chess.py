@@ -1,11 +1,6 @@
 from board import GameBoard
-from player import *
 from rules import ChessRules
 
-
-# player cannot move other piece if they are in check
-# change tile colors!!!!!!!!
-# Mke sure all pieces are removed from player roster
 
 class Chess:
     def __init__(self, p1, p2):
